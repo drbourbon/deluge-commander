@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 const settings = require('electron-settings');
 const mover = require('./mover.js');
 
@@ -32,20 +32,30 @@ const createWindow = () => {
 	let cardRootPath = settings.get('card_root');
 	let isCalledViaCLI = checkIfCalledViaCLI(process.argv);
 
-//	console.log("deluge card root: " + cardRootPath);
+  if(argv.card_root && mover.validRootPath(argv.card_root)){
+    settings.set('card_root', argv.card_root);
+    cardRootPath = argv.card_root;
+  }
+
+  if(!cardRootPath || ! mover.validRootPath(cardRootPath)){
+    let choosen_root_path = dialog.showOpenDialog({properties: ['openDirectory']});
+    if(choosen_root_path && mover.validRootPath(choosen_root_path[0])) {
+      settings.set('card_root', choosen_root_path[0]);
+      cardRootPath = choosen_root_path;
+    } else {
+      cardRootPath = null;
+    }
+  }
+
+  if(!cardRootPath){
+    dialog.showErrorBox('error','Invalid Deluge SD card root');
+    app.quit();
+  }
+
+  console.log("Deluge card root set to " + cardRootPath);
 
 	if(isCalledViaCLI) {
 		mainWindow = new BrowserWindow({ show: false, width: 0, height: 0});
-
-		if(argv.card_root){
-			settings.set('card_root', argv.card_root);
-			cardRootPath = argv.card_root;
-    }
-    
-    if(argv.move){
-
-    }
-
 		app.quit();
 	} else {
     mainWindow = new BrowserWindow({ show: true, width: 640, height: 480});

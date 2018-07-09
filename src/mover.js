@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const util = require('util');
 const parser = require('fast-xml-parser');
 const settings = require('electron-settings');
 
@@ -23,13 +24,28 @@ var scan_dir = function(sample_file_name, scan_path) {
     return found;
 };
 
+exports.validRootPath = function(dpath) {
+    let isValid = fs.existsSync(path.join(dpath, 'SAMPLES'));
+    return isValid;
+}
 
-exports.usages = function(sample_file) {
+var usages = function(sample_file) {
     let relative_sample_file_name = path.relative(cardRootPath, sample_file);
 //    console.log('finding usages for: ' + relative_sample_file_name);
     let occurences = [];
     occurences = occurences.concat(scan_dir(relative_sample_file_name, path.join(cardRootPath, 'SONGS')));
     occurences = occurences.concat(scan_dir(relative_sample_file_name, path.join(cardRootPath, 'SYNTHS')));
     occurences = occurences.concat(scan_dir(relative_sample_file_name, path.join(cardRootPath, 'KITS')));
-    console.log(JSON.stringify(occurences));
+//    console.log(JSON.stringify(occurences));
+    return occurences;
 };
+
+const usagesAsync = util.promisify(usages);
+
+exports.usages = usages;
+
+exports.usagesAsync = async function(sample_file) {
+//    console.log('start usages async for ' + sample_file);
+    const result = await usagesAsync(sample_file);
+    return result;
+}

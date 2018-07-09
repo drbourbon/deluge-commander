@@ -5,16 +5,22 @@
     <title></title>
     <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="../node_modules/font-awesome/css/font-awesome.min.css">
+
+    <script src="./../src/renderer.js"></script>
   </head>
   <body>
-    <div class="container-fluid w-100">
-      <div class="row">
-        <div class="col-5"><ol id="sample-files"></ol></div>
-        <div class="col-7">Here occurences and actions</div>
-      </div>
+
+    <nav id="pwd" aria-label="breadcrumb"></nav>
+
+    <div class="container-fluid w-100 mb-3">
+        <div id="sample-browser"></div>
     </div>
+
     <script>
-        require('./../src/renderer');
-    </script>    
+      require('./../src/renderer.js');
+      (function () {
+            readFolder();
+        })();      
+    </script>
   </body>
 </html>
