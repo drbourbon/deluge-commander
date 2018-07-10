@@ -58,7 +58,7 @@ const createWindow = () => {
 		mainWindow = new BrowserWindow({ show: false, width: 0, height: 0});
 		app.quit();
 	} else {
-    mainWindow = new BrowserWindow({ show: true, width: 640, height: 480});
+    mainWindow = new BrowserWindow({ show: true, width: 800, height: 480});
     
     // and load the index.html of the app.
     mainWindow.loadURL(`file://${__dirname}/index.html`);
