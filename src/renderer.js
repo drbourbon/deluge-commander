@@ -3,7 +3,15 @@ const fs = require('fs');
 const path = require('path');
 var $ = require('jquery');
 const settings = require('electron-settings');
+//var wavInfo = require('./wav-info');
+const wavFileInfo = require('wav-file-info');
+const moment = require('moment');
+const prettyBytes = require('pretty-bytes');
+
 const mover = require('./mover.js');
+
+var momentDurationFormatSetup = require("moment-duration-format");
+momentDurationFormatSetup(moment);
 
 let cardRootPath = settings.get('card_root');
 let samplesRootPath = path.join(cardRootPath, 'SAMPLES');
@@ -77,9 +85,9 @@ function renderFile(name, fpath, renderMode, isDirectory) {
     switch(renderMode){
         case 'list':
             if(isDirectory){
-                return `<a href="#" data-path="${fpath}" class="${file_bootstrap_class}" onclick="readFolder(this.dataset.path)"><i class="fa fa-folder-open"></i> ${name}</a>`
+                return `<a href="#" data-path="${fpath}" class="${file_bootstrap_class}" onclick="readFolder(this.dataset.path)"><h5><i class="fa fa-folder-open"></i> ${name}</h5></a>`
             } else {
-                return $(`<div data-path="${fpath}" class="${file_bootstrap_class}"><i class="fa fa-file"></i> ${name} <span class="actions text-right float-right"></span></div>`)
+                return $(`<div data-path="${fpath}" class="${file_bootstrap_class}"><h5><i class="fa fa-file-audio-o"></i> ${name} <span class="counter badge badge-primary badge-pill"></span></h5> <span class="actions text-right float-right"></span></div>`)
             }
         case 'card':
             if(isDirectory){
@@ -124,15 +132,41 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                         
                         if(usages.length>0){
                             //console.log(`Found ${usages.length} for ${idpath}`);
-                            item.append(` <span class="badge badge-primary badge-pill">${usages.length}</span>`);
+                            item.find('.counter').append(usages.length);
+//                            item.append(` <span class="badge badge-primary badge-pill">${usages.length}</span>`);
+
+                            let usages_rendered = usages.map(((x)=>{ 
+                                let badge_type = x.startsWith('KITS') ? 'badge-success' : (x.startsWith('SONGS') ? 'badge-primary' : 'badge-info');
+                                return `<span class="badge ${badge_type}">${x}</span>`;
+                            })).join(" ");
+
                             // item.append(`<div>${usages.map(((x)=>{ return '<span class="badge badge-secondary">' + x + '</span>'})).join(" ")}</div>`);
-                            item.append(`<div>${usages.map(((x)=>{ return '<span class="badge badge-success">' + x + '</span>'})).join(" ")}</div>`);
+                            item.append(`<div>${usages_rendered}</div>`);
                         } else {
                             actions.append(' <button class="btn btn-outline-danger btn-sm ml-2"><i class="fa fa-trash"></i></button>')
                         }
 
-                        actions.append(`<button onclick="moveSample('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-arrows" aria-hidden="true"></i></button>`)
+                        actions.append(`<button onclick="moveSample('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-folder-o" aria-hidden="true"></i></button>`)
                         //item.append(actions);
+                    });
+
+                    wavFileInfo.infoByFilename(fpath, (err,info) => {
+                        if (err && err.invalid_reasons[0].startsWith('chunk_size')) return;
+                        if (err) throw err;
+
+                        let rinfo = $(`<div><small class='wav-info'></small></div>`);
+
+                        [
+                            ['rate', info.header.sample_rate, 'Hz'],
+                            ['duration', moment.duration(Math.round(info.duration * 1000)).format(), ''],
+                            ['bits', info.header.bits_per_sample, ''],
+                            ['channels', info.header.num_channels == 1 ? 'mono': (info.header.num_channels==2 ? 'stereo' : 'multi'), ''],
+                            ['size', prettyBytes(info.stats.size), '']
+                        ].forEach((el)=>{
+                            rinfo.find('.wav-info').append(`${el[0]}: <strong>${el[1]}${el[2]}</strong> `);
+                        });
+                        item.append(rinfo);
+                        //console.log(info);
                     })
                 }
             })

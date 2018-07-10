@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog } from 'electron';
+const WindowStateManager = require('electron-window-state-manager');
 const settings = require('electron-settings');
 const mover = require('./mover.js');
 
@@ -27,6 +28,11 @@ if (require('electron-squirrel-startup')) { // eslint-disable-line global-requir
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
+
+const mainWindowState = new WindowStateManager('mainWindow', {
+  defaultWidth: 1024,
+  defaultHeight: 768
+});
 
 const createWindow = () => {
 	let cardRootPath = settings.get('card_root');
@@ -58,18 +64,28 @@ const createWindow = () => {
 		mainWindow = new BrowserWindow({ show: false, width: 0, height: 0});
 		app.quit();
 	} else {
-    mainWindow = new BrowserWindow({ show: true, width: 800, height: 480});
+    mainWindow = new BrowserWindow({ show: true, width: mainWindowState.width, height: mainWindowState.height});
     
+    if (mainWindowState.maximized) {
+      mainWindow.maximize();
+    }
+
     // and load the index.html of the app.
     mainWindow.loadURL(`file://${__dirname}/index.html`);
 
     // Open the DevTools.
-    mainWindow.webContents.openDevTools();
+    //mainWindow.webContents.openDevTools();
 	}
 
+  mainWindow.on('close', () => {
+    if(!isCalledViaCLI){
+      mainWindowState.saveState(mainWindow);
+    }
+  });
 
   // Emitted when the window is closed.
   mainWindow.on('closed', () => {
+
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
@@ -86,9 +102,14 @@ app.on('ready', createWindow);
 app.on('window-all-closed', () => {
   // On OS X it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
+
+  app.quit();
+
+  /*
   if (process.platform !== 'darwin') {
     app.quit();
   }
+  */
 });
 
 app.on('activate', () => {
