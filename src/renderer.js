@@ -47,7 +47,7 @@ function stopPlay() {
 //    if(currently_playing) currently_playing.unload();
 
     const player = $('#player');
-    player.trigger('stop');
+    if(player[0])player[0].pause();
 }
 
 function playSample(sample_path){
