@@ -30,7 +30,7 @@
       },
       "electronPackagerConfig": {
         "packageManager": "npm",
-        "icon": "src/assets/icon.png.icns"
+        "icon": "src/assets/app-icon"
       },
       "electronWinstallerConfig": {
         "name": "deluge_cmd"
