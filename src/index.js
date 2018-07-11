@@ -1,3 +1,5 @@
+import { addBypassChecker } from 'electron-compile';
+
 import { app, BrowserWindow, dialog } from 'electron';
 const WindowStateManager = require('electron-window-state-manager');
 const settings = require('electron-settings');
@@ -24,6 +26,11 @@ function checkIfCalledViaCLI(args){
 if (require('electron-squirrel-startup')) { // eslint-disable-line global-require
   app.quit();
 }
+
+// [FB] THIS IS WORKAROUND FOR LOCAL FILE ACCESS: https://github.com/electron-userland/electron-compile/pull/199
+addBypassChecker((filePath) => {
+  return /\.WAV/.test(filePath.toUpperCase());
+});
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -56,6 +63,7 @@ const createWindow = () => {
   if(!cardRootPath){
     dialog.showErrorBox('error','Invalid Deluge SD card root');
     app.quit();
+    return;
   }
 
   console.log("Deluge card root set to " + cardRootPath);
@@ -64,7 +72,16 @@ const createWindow = () => {
 		mainWindow = new BrowserWindow({ show: false, width: 0, height: 0});
 		app.quit();
 	} else {
-    mainWindow = new BrowserWindow({ show: true, width: mainWindowState.width, height: mainWindowState.height});
+    mainWindow = new BrowserWindow({ 
+      show: true, 
+      width: mainWindowState.width, 
+      height: mainWindowState.height,
+      webPreferences: {
+        webSecurity: true,
+        allowRunningInsecureContent: false,
+        webaudio:true,
+      }
+    });
     
     if (mainWindowState.maximized) {
       mainWindow.maximize();

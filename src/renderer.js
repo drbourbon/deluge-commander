@@ -1,4 +1,5 @@
-const {dialog} = require('electron').remote
+const {dialog} = require('electron').remote;
+const remote = require('electron').remote;
 const fs = require('fs');
 const path = require('path');
 var $ = require('jquery');
@@ -7,14 +8,16 @@ const settings = require('electron-settings');
 const wavFileInfo = require('wav-file-info');
 const moment = require('moment');
 const prettyBytes = require('pretty-bytes');
+const prompt = require('electron-prompt');
+var fileUrl = require('file-url');
 
 const mover = require('./mover.js');
 
 var momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
 
-let cardRootPath = settings.get('card_root');
-let samplesRootPath = path.join(cardRootPath, 'SAMPLES');
+let cardRootPath = mover.cardRootPath; //settings.get('card_root');
+let samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
 
 let currentPath = samplesRootPath;
 
@@ -26,26 +29,141 @@ function setRoot() {
         });
     if(!choosen_root_path)return;
     if(mover.validRootPath(choosen_root_path[0])) {
+        console.log(choosen_root_path[0]);
         settings.set('card_root', choosen_root_path[0]);
-        cardRootPath = choosen_root_path[0];
+//        cardRootPath = choosen_root_path[0];
+        samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
         readFolder();
       } else {
         dialog.showErrorBox('error','Invalid Deluge SD card root');
+        return;
     }
 }
 
-function moveSample(sample_path){
-    let destination_path = dialog.showOpenDialog(
-        {
-            title:'Choose destination folder', 
-            defaultPath: path.join(cardRootPath, 'SAMPLES'),
-            properties: ['openDirectory']
+let currently_playing = null;
+
+function stopPlay() {
+//    if(currently_playing) currently_playing.unload();
+
+    const player = $('#player');
+    player.trigger('stop');
+}
+
+function playSample(sample_path){
+    const absolute_sample_path = path.join(cardRootPath(),sample_path);
+    console.log('Playing ' + fileUrl(absolute_sample_path));
+
+    const player = $('#player');
+    player.attr('src', fileUrl(absolute_sample_path));
+//    player.attr('src', 'https://freewavesamples.com/files/Yamaha-V50-Synbass-1-C2.wav');
+    player[0].load();
+    player[0].play();
+}
+
+/*
+function playSample(sample_path) {
+    const absolute_sample_path = path.join(cardRootPath(),sample_path);
+    console.log('Playing ' + absolute_sample_path);
+    if(currently_playing) currently_playing.unload();
+    currently_playing = new Howl({ 
+        src: [absolute_sample_path],
+        autoplay: true,
+        html5:true,
+        format: ['wav']
+    });
+//    Howler.unload();
+    //currently_playing.play();
+}
+*/
+
+function renameSample(sample_path) {
+    const name = path.basename(sample_path, path.extname(sample_path));
+
+    prompt({
+        title: 'Rename sample',
+        label: 'new file name',
+        value: name,
+        inputAttrs: {
+            type: 'text'
+        }
+    }, remote.getCurrentWindow()).then(r => {
+        if (!r) return;
+        if(r===name)return;
+
+        const new_name = r.replace(/[\u0000-\u0008,\u000B,\u000C,\u000E-\u001F,\u0022,\u0026,\u0027,\u003C,\u003E]/g, '');
+        const absolute_sample_path = path.join(cardRootPath(), sample_path);
+        const relative_destination_path = path.join(path.dirname(sample_path),new_name + '.WAV');
+        const absolute_destination_path = path.join(cardRootPath(),relative_destination_path);
+
+        // re-scan just in case (safer!!)
+        let usages = mover.usages(absolute_sample_path);
+        let message = `Renaming ${sample_path} to ${relative_destination_path}. Proceed?`;
+        let dmessage = usages.length>0 ? `The following files will also be updated: ${usages.join(', ')}.` : '';
+
+        let confirmation = dialog.showMessageBox({
+            type: 'question',
+            message: message,
+            detail: dmessage,
+            buttons: ['Cancel','OK']
         });
 
+        if(confirmation && confirmation===1){
+            try {
+                mover.move(absolute_sample_path, absolute_destination_path, usages);
+                readFolder(currentPath);
+            } catch (error) {
+                dialog.showErrorBox('error renaming sample',error.message);
+            }
+        }
+
+    })
+}
+
+function moveSample(sample_path){
+    const destination_paths = dialog.showOpenDialog(
+        {
+            title:'Choose destination folder', 
+            defaultPath: path.join(cardRootPath(), 'SAMPLES'),
+            properties: ['openDirectory']
+        });
+    if(!destination_paths) return;
+
+    let destination_path = destination_paths[0];
+    if(!mover.validSampleDestinationPath(destination_path)){
+        dialog.showErrorBox('error','Invalid destination path. Sample files must be located inside SAMPLES folder');
+        return;
+    }
+
+    let relative_destination_path = path.relative(cardRootPath(), destination_path);
+    let absolute_sample_path = path.join(cardRootPath(), sample_path);
+
+    // re-scan just in case (safer!!)
+    let usages = mover.usages(absolute_sample_path);
+    let message = `Moving ${sample_path} to ${relative_destination_path}. Proceed?`;
+    let dmessage = usages.length>0 ? `The following files will also be updated: ${usages.join(', ')}.` : '';
+
+    let confirmation = dialog.showMessageBox({
+        type: 'question',
+        message: message,
+        detail: dmessage,
+        buttons: ['Cancel','OK']
+    });
+
+    if(confirmation && confirmation===1){
+        try {
+            mover.move(absolute_sample_path, destination_path, usages);
+            readFolder(currentPath);
+        } catch (error) {
+            dialog.showErrorBox('error moving sample',error.message);
+        }
+    }
 }
 
 function setCurrentPath(cpath) {
     currentPath = cpath;
+
+    // TODO stop playing sample if any (too lazy to add other controls for that)
+    stopPlay();
 
     let apath;
     if(cpath!==samplesRootPath){
@@ -87,7 +205,7 @@ function renderFile(name, fpath, renderMode, isDirectory) {
             if(isDirectory){
                 return `<a href="#" data-path="${fpath}" class="${file_bootstrap_class}" onclick="readFolder(this.dataset.path)"><h5><i class="fa fa-folder-open"></i> ${name}</h5></a>`
             } else {
-                return $(`<div data-path="${fpath}" class="${file_bootstrap_class}"><h5><i class="fa fa-file-audio-o"></i> ${name} <span class="counter badge badge-primary badge-pill"></span></h5> <span class="actions text-right float-right"></span></div>`)
+                return $(`<div data-path="${fpath}" class="${file_bootstrap_class}"><h5><i data-path="${fpath}" onclick="playSample(this.dataset.path)" class="fa fa-file-audio-o"></i> ${name} <span class="counter badge badge-primary badge-pill"></span></h5> <span class="actions text-right float-right"></span></div>`)
             }
         case 'card':
             if(isDirectory){
@@ -117,7 +235,7 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
             fs.stat(fpath, (err,stats)=>{
                 if(err) throw err;
                 let item;
-                const relative_path = path.relative(samplesRootPath, fpath);
+                const relative_path = path.relative(cardRootPath(), fpath);
                 if(stats.isDirectory()){
                     item = renderFile(file,fpath,renderMode,true);// `<a href="#" data-path="${fpath}" class="${file_bootstrap_class}" onclick="readFolder(this.dataset.path)"><i class="fa fa-folder-open"></i> ${file}</a>`;
                 } else {
@@ -127,12 +245,13 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                 $('#sample-files').append(item);
 
                 if(!stats.isDirectory()){
+                    const my_item = item;
                     mover.usagesAsync(fpath).then((usages)=>{
-                        let actions = item.find('.actions');// $(`<div class="text-right"></div>`);
+                        let actions = my_item.find('.actions');// $(`<div class="text-right"></div>`);
                         
                         if(usages.length>0){
                             //console.log(`Found ${usages.length} for ${idpath}`);
-                            item.find('.counter').append(usages.length);
+                            my_item.find('.counter').append(usages.length);
 //                            item.append(` <span class="badge badge-primary badge-pill">${usages.length}</span>`);
 
                             let usages_rendered = usages.map(((x)=>{ 
@@ -141,11 +260,12 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                             })).join(" ");
 
                             // item.append(`<div>${usages.map(((x)=>{ return '<span class="badge badge-secondary">' + x + '</span>'})).join(" ")}</div>`);
-                            item.append(`<div>${usages_rendered}</div>`);
+                            my_item.append(`<div>${usages_rendered}</div>`);
                         } else {
-                            actions.append(' <button class="btn btn-outline-danger btn-sm ml-2"><i class="fa fa-trash"></i></button>')
+                            //actions.append(' <button class="btn btn-outline-danger btn-sm ml-2"><i class="fa fa-trash"></i></button>')
                         }
 
+                        actions.append(`<button onclick="renameSample('${relative_path}')" class="btn btn-outline-success btn-sm ml-2"><i class="fa fa-pencil-square-o" aria-hidden="true"></i></button>`)
                         actions.append(`<button onclick="moveSample('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-folder-o" aria-hidden="true"></i></button>`)
                         //item.append(actions);
                     });
@@ -165,7 +285,7 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                         ].forEach((el)=>{
                             rinfo.find('.wav-info').append(`${el[0]}: <strong>${el[1]}${el[2]}</strong> `);
                         });
-                        item.append(rinfo);
+                        my_item.append(rinfo);
                         //console.log(info);
                     })
                 }
