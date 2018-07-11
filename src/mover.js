@@ -4,6 +4,7 @@ const util = require('util');
 //const parser = require('fast-xml-parser');
 var pathIsInside = require("path-is-inside");
 const settings = require('electron-settings');
+const slash = require('slash');
 
 //let cardRootPath = settings.get('card_root');
 
@@ -12,14 +13,17 @@ exports.cardRootPath = function() {
 }
 
 const rewrite_wav_ref = function(xml_file, source_relative, destination_relative) {
-    console.log(`${xml_file}: rewriting references to ${source_relative} to ${destination_relative}`);
+    const slashed_source_relative = slash(source_relative);
+    const slashed_destination_relative = slash(destination_relative);
+    console.log(`${xml_file}: rewriting references to ${slashed_source_relative} to ${slashed_destination_relative}`);
 
     // TODO double check the encoding
     let data = fs.readFileSync(xml_file, { encoding: "ascii" });
-    let regex = new RegExp(`<fileName>${source_relative}<\/fileName>`,'g');
+    let regex = new RegExp(`<fileName>${slashed_source_relative}<\/fileName>`,'g');
 
     // [FB] this is the important stuff!!
-    let new_data = data.replace(/<fileName>[\s\S]*?<\/fileName>/, '<fileName>' + destination_relative + '<\/fileName>');
+    let new_data = data.replace(regex, '<fileName>' + slashed_destination_relative + '<\/fileName>');
+//    let new_data = data.replace(/<fileName>[\s\S]*?<\/fileName>/, '<fileName>' + slashed_destination_relative + '<\/fileName>');
 
     let temp_name = xml_file + '.new';
     fs.writeFileSync(temp_name,new_data,"ascii"); 
@@ -99,7 +103,7 @@ const scan_dir = function(sample_file_name, scan_path) {
 };
 
 const usages = function(sample_file) {
-    let relative_sample_file_name = path.relative(cardRootPath(), sample_file);
+    let relative_sample_file_name = slash(path.relative(cardRootPath(), sample_file));
 //    console.log('finding usages for: ' + relative_sample_file_name);
     let occurences = [];
     occurences = occurences.concat(scan_dir(relative_sample_file_name, path.join(cardRootPath(), 'SONGS')));
@@ -131,6 +135,7 @@ const scan_dir_async = async function(sample_file_name, scan_path) {
     const files = await readdirP(scan_path);
     for (let file of files) {
         let file_path = path.join(scan_path, file);
+        //console.log(file_path + ' has ' + sample_file_name + ' ..');
         if(path.extname(file_path).toUpperCase()!=='.XML') continue;
         const occurs = await sample_occurs_in_file(sample_file_name, file_path);
         if(occurs) {
@@ -143,7 +148,7 @@ const scan_dir_async = async function(sample_file_name, scan_path) {
 };
 
 const usagesAsync = async function(sample_file) {
-    let relative_sample_file_name = path.relative(cardRootPath(), sample_file);
+    let relative_sample_file_name = slash(path.relative(cardRootPath(), sample_file));
 
     const songs = await scan_dir_async(relative_sample_file_name, path.join(cardRootPath(), 'SONGS'));
     const synths = await scan_dir_async(relative_sample_file_name, path.join(cardRootPath(), 'SYNTHS'));
