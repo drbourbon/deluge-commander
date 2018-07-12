@@ -1,18 +1,19 @@
 {
   "name": "deluge-cmd",
   "productName": "deluge-cmd",
-  "version": "0.0.1",
-  "description": "Syntstrom Deluge sample mover",
+  "version": "0.8.0",
+  "description": "Synthstrom Deluge sample mover",
   "main": "src/index.js",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
+    "make:linux": "electron-forge make --platform=linux --arch=ia32,x64",
     "publish": "electron-forge publish",
     "lint": "eslint src --color"
   },
   "keywords": [],
-  "author": "Fabio Barbon",
+  "author": "neuma.studio",
   "license": "MIT",
   "config": {
     "forge": {
@@ -51,6 +52,7 @@
     "bootstrap": "^4.1.1",
     "electron-compile": "^6.4.3",
     "electron-prompt": "^1.0.0",
+    "electron-remote": "^1.3.0",
     "electron-settings": "^3.2.0",
     "electron-squirrel-startup": "^1.0.0",
     "electron-window-state-manager": "^0.3.2",
@@ -65,7 +67,9 @@
     "popper.js": "^1.14.3",
     "pretty-bytes": "^5.1.0",
     "slash": "^2.0.0",
+    "videojs-wavesurfer": "^2.5.0",
     "wav-file-info": "0.0.8",
+    "waveform-data": "^2.0.2",
     "yargs": "^12.0.1"
   },
   "devDependencies": {

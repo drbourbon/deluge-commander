@@ -8,11 +8,53 @@
     <link rel="stylesheet" href="../src/bootstrap.min.css">
 
     <script src="../node_modules/howler/dist/howler.js"></script>
+    <!--script src="../node_modules/wavesurfer.js/dist/wavesurfer.min.js"></script-->
+
     <script src="./../src/renderer.js"></script>
+
+    <style>
+
+body {
+  margin-top: 64px;
+}
+
+.loading-sample {
+  background-image: url(loading.gif);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: top right;
+}   
+
+.deluge-sample {
+  background-repeat: no-repeat;
+  background-size: contain; 
+  background-origin: padding-box;
+}
+
+.checked, .checked:hover {
+  background-color: orange;
+}
+
+.breadcrumb {
+  background: transparent;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+    </style>
   </head>
   <body>
 
-    <nav id="pwd" aria-label="breadcrumb"></nav>
+    <nav class="navbar fixed-top navbar-light bg-light">
+      <div id="pwd" class="m-0" aria-label="breadcrumb"></div>
+      <div class="nav-text">
+        <button onclick="newFolder()" class="btn btn-sm btn-outline-primary"><i class="fa fa-plus" aria-hidden="true"></i> </button>
+        <!--button onclick="toggleMulti()" class="btn btn-sm btn-outline-primary"><i class="fa fa-list-ul" aria-hidden="true"></i> </button-->
+  
+      </div>
+    </nav>
+
+    <!--nav id="pwd" aria-label="breadcrumb"></nav-->
 
     <div class="container-fluid w-100 mb-3">
         <div id="sample-browser"></div>
@@ -20,6 +62,7 @@
 
     <script>
       require('./../src/renderer.js');
+
       (function () {
             readFolder();
         })();      
@@ -27,5 +70,9 @@
 
     <audio id="player" preload>
     </audio>
+
+    <div class="w-100" hidden>
+      <canvas id="waveform-placeholder" height="120"></canvas>
+    </div>
   </body>
 </html>

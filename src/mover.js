@@ -29,6 +29,17 @@ const rewrite_wav_ref = function(xml_file, source_relative, destination_relative
     fs.writeFileSync(temp_name,new_data,"ascii"); 
 }
 
+exports.delete = function(sample_path) {
+    if(!fs.existsSync(sample_path)){
+        throw new Error(`Sample ${sample_path} not found`);
+    }
+    try {
+        fs.unlinkSync(sample_path);
+    } catch (error) {
+        throw error;
+    }
+}
+
 exports.move = function(source, dest_path, usages) {
     const is_renaming = path.extname(dest_path).endsWith('WAV');
 
@@ -74,7 +85,11 @@ exports.move = function(source, dest_path, usages) {
 }
 
 exports.validRootPath = function(dpath) {
-    let isValid = fs.existsSync(dpath) && fs.existsSync(path.join(dpath, 'SAMPLES'));
+    const isValid = fs.existsSync(dpath) 
+        && fs.existsSync(path.join(dpath, 'SAMPLES'))
+        && fs.existsSync(path.join(dpath, 'KITS'))
+        && fs.existsSync(path.join(dpath, 'SONGS'))
+        && fs.existsSync(path.join(dpath, 'SYNTHS'));
     return isValid;
 }
 
