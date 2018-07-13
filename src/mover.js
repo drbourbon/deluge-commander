@@ -8,9 +8,11 @@ const slash = require('slash');
 
 //let cardRootPath = settings.get('card_root');
 
-exports.cardRootPath = function() {
+const cardRootPath = function() {
     return settings.get('card_root');
 }
+
+exports.cardRootPath = cardRootPath;
 
 const rewrite_wav_ref = function(xml_file, source_relative, destination_relative) {
     const slashed_source_relative = slash(source_relative);

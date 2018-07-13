@@ -7,10 +7,26 @@ const mover = require('./mover.js');
 
 const argv = require('yargs')
   .command({
-    command: 'move <sample_file> <destination_folder>',
-    desc: 'Move sample between folders',
+    command: 'usages <sample_file>',
+    desc: 'List references of <sample_file> in Deluge SD card folders',
     handler: (argv)=>{
-      mover.usages(argv.sample_file);
+      const occ = mover.usages(argv.sample_file);
+      console.log(occ.join(', '));
+      app.quit();
+    }
+  })
+  .command({
+    command: 'move <sample_file> <destination_path>',
+    desc: 'Move <sample_file> to another folder',
+    handler: (argv)=>{
+      try {
+        const occ = mover.usages(argv.sample_file);
+        console.log(`Moving ${argv.sample_file} to ${argv.destination_path} and updating references in: ${occ.join(', ')}`);
+        mover.move(argv.sample_file, argv.destination_path, occ);
+      } catch (error) {
+        console.log('Error moving sample: ' + error.message);
+      }
+      app.quit();
     }
   })
   .argv;
@@ -67,6 +83,12 @@ const createWindow = () => {
   }
 
   console.log("Deluge card root set to " + cardRootPath);
+
+  if(argv.disable_waveforms){
+    settings.set('disable_waveforms', argv.disable_waveforms === 'true');
+  }
+  console.log("Waveform display: " + !settings.get('disable_waveforms'));
+
 
 	if(isCalledViaCLI) {
 		mainWindow = new BrowserWindow({ show: false, width: 0, height: 0});

@@ -23,7 +23,8 @@ var momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
 
 let cardRootPath = mover.cardRootPath; //settings.get('card_root');
-let samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
+const disable_waveforms = settings.get('disable_waveforms');
+const samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
 
 let currentPath = samplesRootPath;
 
@@ -350,57 +351,61 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                         });
                         */
 
+                        if(!disable_waveforms || disable_waveforms===false){
 
-                       fetch(fileUrl(fpath))
-                       .then(response => response.arrayBuffer())
-                       .then(buffer => {
-                           webAudioBuilder(audioContext, buffer, (err, waveform) => {
-                           if (err) {
-                               console.error(err);
-                               return;
-                           }
+                            fetch(fileUrl(fpath))
+                            .then(response => response.arrayBuffer())
+                            .then(buffer => {
+                                webAudioBuilder(audioContext, buffer, (err, waveform) => {
+                                if (err) {
+                                    console.error(err);
+                                    return;
+                                }
+     
+                                let canvas = $('#waveform-placeholder')[0];
+                                canvas.width = my_item.width();
+     
+                                const interpolateHeight = (total_height) => {
+                                    const amplitude = 256;
+                                    return (size) => total_height - ((size + 128) * total_height) / amplitude;
+                                };
+                                
+                                const y = interpolateHeight(canvas.height);
+                                const ctx = canvas.getContext('2d');
+     
+                                //console.log(ctx);
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                ctx.beginPath();
+                                
+                                // from 0 to 100
+                                waveform.min.forEach((val, x) => ctx.lineTo(x + 0.5, y(val) + 0.5));
+                                
+                                // then looping back from 100 to 0
+                                waveform.max.reverse().forEach((val, x) => {
+                                ctx.lineTo((waveform.offset_length - x) + 0.5, y(val) + 0.5);
+                                });
+                                
+                                ctx.closePath();
+                                ctx.fillStyle = 'lightGrey';
+                                ctx.lineWidth = 1;
+                                ctx.strokeStyle= 'lightGrey';
+                                ctx.fill();
+                                ctx.stroke();
+     
+                                const pngUrl = canvas.toDataURL(); 
+                                my_item.css({
+                                     'background-size': '100% 100%',
+                                     'background-image': "url(" + pngUrl + ")",
+                                     'background-position': 'center left'
+     
+                                })
+     
+                                //console.log(pngUrl);
+                                });
+                            });
+     
 
-                           let canvas = $('#waveform-placeholder')[0];
-                           canvas.width = my_item.width();
-
-                           const interpolateHeight = (total_height) => {
-                               const amplitude = 256;
-                               return (size) => total_height - ((size + 128) * total_height) / amplitude;
-                           };
-                           
-                           const y = interpolateHeight(canvas.height);
-                           const ctx = canvas.getContext('2d');
-
-                           //console.log(ctx);
-                           ctx.clearRect(0, 0, canvas.width, canvas.height);
-                           ctx.beginPath();
-                           
-                           // from 0 to 100
-                           waveform.min.forEach((val, x) => ctx.lineTo(x + 0.5, y(val) + 0.5));
-                           
-                           // then looping back from 100 to 0
-                           waveform.max.reverse().forEach((val, x) => {
-                           ctx.lineTo((waveform.offset_length - x) + 0.5, y(val) + 0.5);
-                           });
-                           
-                           ctx.closePath();
-                           ctx.fillStyle = 'lightGrey';
-                           ctx.lineWidth = 1;
-                           ctx.strokeStyle= 'lightGrey';
-                           ctx.fill();
-                           ctx.stroke();
-
-                           const pngUrl = canvas.toDataURL(); 
-                           my_item.css({
-                                'background-size': '100% 100%',
-                                'background-image': "url(" + pngUrl + ")",
-                                'background-position': 'center left'
-
-                           })
-
-                           //console.log(pngUrl);
-                           });
-                       });
+                        }
 
                     });
 

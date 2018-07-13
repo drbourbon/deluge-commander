@@ -8,7 +8,7 @@
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
-    "make:linux": "electron-forge make --platform=linux --arch=ia32,x64",
+    "make:linux": "electron-forge make --platform=linux --arch=x64",
     "publish": "electron-forge publish",
     "lint": "eslint src --color"
   },
@@ -25,8 +25,7 @@
           "zip"
         ],
         "linux": [
-          "deb",
-          "rpm"
+          "zip"
         ]
       },
       "electronPackagerConfig": {
