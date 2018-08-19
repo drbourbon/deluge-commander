@@ -24,7 +24,7 @@ momentDurationFormatSetup(moment);
 
 let cardRootPath = mover.cardRootPath; //settings.get('card_root');
 const disable_waveforms = settings.get('disable_waveforms');
-const samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
+let samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
 
 let currentPath = samplesRootPath;
 
@@ -40,6 +40,7 @@ function setRoot() {
         settings.set('card_root', choosen_root_path[0]);
 //        cardRootPath = choosen_root_path[0];
         samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
+        mover.sync_from_card();
         readFolder();
       } else {
         dialog.showErrorBox('error','Invalid Deluge SD card root');
@@ -128,6 +129,88 @@ function deleteSample(sample_path) {
     }
 }
 
+function renameFolder(sample_folder) {
+    const name = path.basename(sample_folder);
+    prompt({
+        title: 'Rename folder',
+        label: 'new folder name',
+        value: name,
+        inputAttrs: {
+            type: 'text'
+        }
+    }, remote.getCurrentWindow()).then(r => {
+        if (!r) return;
+        if(r===name)return;
+
+        const new_name = r.replace(/[\u0000-\u0008,\u000B,\u000C,\u000E-\u001F,\u0022,\u0026,\u0027,\u003C,\u003E]/g, '');
+        const absolute_sample_folder = path.join(cardRootPath(), sample_folder, '/');
+        const relative_destination_path = path.join(path.dirname(sample_folder),new_name,'/');
+        const absolute_destination_path = path.join(cardRootPath(),relative_destination_path);
+
+        // re-scan just in case (safer!!)
+        let usages = mover.usages(absolute_sample_folder);
+        let message = `Renaming ${sample_folder} to ${relative_destination_path}. Proceed?`;
+        let dmessage = usages.length>0 ? `The following files will also be updated: ${usages.join(', ')}.` : '';
+
+        let confirmation = dialog.showMessageBox({
+            type: 'question',
+            message: message,
+            detail: dmessage,
+            buttons: ['Cancel','OK']
+        });
+
+        if(confirmation && confirmation===1){
+            try {
+                mover.move_folder(absolute_sample_folder, absolute_destination_path, usages, true);
+                readFolder(currentPath);
+            } catch (error) {
+                dialog.showErrorBox('error renaming folder',error.message);
+            }
+        }
+
+    })
+}
+
+function moveFolder(sample_folder){
+    const destination_paths = dialog.showOpenDialog(
+        {
+            title:'Choose destination folder', 
+            defaultPath: path.join(cardRootPath(), 'SAMPLES'),
+            properties: ['openDirectory']
+        });
+    if(!destination_paths) return;
+
+    let destination_path = destination_paths[0];
+    if(!mover.validSampleDestinationPath(destination_path)){
+        dialog.showErrorBox('error','Invalid destination path. Sample files must be located inside SAMPLES folder');
+        return;
+    }
+
+    let relative_destination_path = path.relative(cardRootPath(), destination_path);
+    let absolute_sample_folder_path = path.join(cardRootPath(), sample_folder);
+
+    // re-scan just in case (safer!!)
+    let usages = mover.usages(absolute_sample_folder_path);
+    let message = `Moving ${sample_folder} to ${relative_destination_path}. Proceed?`;
+    let dmessage = usages.length>0 ? `The following ${usages.length} files will also be updated: ${usages.join(', ')}.` : '';
+
+    let confirmation = dialog.showMessageBox({
+        type: 'question',
+        message: message,
+        detail: dmessage,
+        buttons: ['Cancel','OK']
+    });
+
+    if(confirmation && confirmation===1){
+        try {
+            mover.move_folder(absolute_sample_folder_path, destination_path, usages, false);
+            readFolder(currentPath);
+        } catch (error) {
+            dialog.showErrorBox('error moving sample folder',error.message);
+        }
+    }
+}
+
 function renameSample(sample_path) {
     const name = path.basename(sample_path, path.extname(sample_path));
 
@@ -192,7 +275,7 @@ function moveSample(sample_path){
     // re-scan just in case (safer!!)
     let usages = mover.usages(absolute_sample_path);
     let message = `Moving ${sample_path} to ${relative_destination_path}. Proceed?`;
-    let dmessage = usages.length>0 ? `The following files will also be updated: ${usages.join(', ')}.` : '';
+    let dmessage = usages.length>0 ? `The following ${usages.length} files will also be updated: ${usages.join(', ')}.` : '';
 
     let confirmation = dialog.showMessageBox({
         type: 'question',
@@ -245,6 +328,8 @@ function setCurrentPath(cpath) {
         $('#pwd-list').append(`<li class="breadcrumb-item" onclick="readFolder()">${el}</li>`);
     })
     */
+
+//    mover.sync_from_card();
 }
 
 
@@ -255,7 +340,8 @@ const file_bootstrap_class = 'list-group-item list-group-item-action';
 
 function renderFile(name, fpath, renderMode, isDirectory) {
     if(isDirectory){
-        return `<a href="#" data-path="${fpath}" class="deluge-folder ${file_bootstrap_class}" onclick="readFolder(this.dataset.path)"><h5><i class="fa fa-folder-open"></i> ${name}</h5></a>`
+//        return $(`<a href="#" data-path="${fpath}" class="deluge-folder ${file_bootstrap_class}" onclick="readFolder(this.dataset.path)"><h5><i class="fa fa-folder-open"></i> ${name}</h5> <span class="actions text-right float-right"></span></div></a>`);
+        return $(`<div data-path="${fpath}" class="deluge-folder ${file_bootstrap_class}"><h5><i class="fa fa-folder-open"></i> ${name}</h5> <span class="actions text-right float-right"></span></div>`)
     } else {
         return $(`<div data-path="${fpath}" class="deluge-sample ${file_bootstrap_class} loading-sample"><h5><i class="fa fa-file-audio-o"></i> ${name} <span class="counter badge badge-primary badge-pill"></span></h5> <span class="actions text-right float-right"></span></div>`)
     }
@@ -287,6 +373,7 @@ $.fn.extend({
   });
 
 function readFolder(cpath = samplesRootPath, renderMode = 'list') {
+//    mover.sync_from_card();
     setCurrentPath(cpath);
 
     fs.readdir(cpath, (err, files) => {
@@ -342,7 +429,7 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                         }
 
                         actions.append(`<button onclick="renameSample('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-pencil-square-o fa-lg" aria-hidden="true"></i></button>`)
-                        actions.append(`<button onclick="moveSample('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-folder-o fa-lg" aria-hidden="true"></i></button>`)
+                        actions.append(`<button onclick="moveSample('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-arrows-alt fa-lg" aria-hidden="true"></i></button>`)
 
                         /*
                         my_item.click(()=>{
@@ -430,6 +517,14 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
 
 
 
+                } else {
+                    // sample directory actions
+                    let actions = item.find('.actions');
+                    actions.append(`<button onclick="readFolder('${fpath}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-folder-open-o fa-lg" aria-hidden="true"></i></button>`);
+                    if(file!=='RESAMPLE' && file!=='RECORD'){
+                        actions.append(`<button onclick="renameFolder('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-pencil-square-o fa-lg" aria-hidden="true"></i></button>`)
+                        actions.append(`<button onclick="moveFolder('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-arrows-alt fa-lg" aria-hidden="true"></i></button>`)
+                    }
                 }
             })
         }

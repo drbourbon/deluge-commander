@@ -3,6 +3,7 @@ import { addBypassChecker } from 'electron-compile';
 import { app, BrowserWindow, dialog } from 'electron';
 const WindowStateManager = require('electron-window-state-manager');
 const settings = require('electron-settings');
+//const {Menu} = require('electron');
 const mover = require('./mover.js');
 
 const argv = require('yargs')
@@ -57,6 +58,26 @@ const mainWindowState = new WindowStateManager('mainWindow', {
   defaultHeight: 768
 });
 
+/*
+const appMenu = [
+  {
+    label: 'View',
+    submenu: [
+      {
+        label: 'Reload',
+        click (item,focusedWindow) {
+          mover.sync_from_card();
+        } 
+      },
+      {
+        label: 'Toggle show/hide waveforms'
+      }
+    ]
+  }
+];
+const menu = Menu.buildFromTemplate(appMenu);
+*/
+
 const createWindow = () => {
 	let cardRootPath = settings.get('card_root');
 	let isCalledViaCLI = checkIfCalledViaCLI(process.argv);
@@ -89,7 +110,8 @@ const createWindow = () => {
   }
   console.log("Waveform display: " + !settings.get('disable_waveforms'));
 
-
+//  mover.load_card();
+  
 	if(isCalledViaCLI) {
 		mainWindow = new BrowserWindow({ show: false, width: 0, height: 0});
 		app.quit();
@@ -105,6 +127,8 @@ const createWindow = () => {
       }
     });
     
+    //Menu.setApplicationMenu(menu);
+
     if (mainWindowState.maximized) {
       mainWindow.maximize();
     }
