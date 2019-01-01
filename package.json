@@ -1,8 +1,8 @@
 {
   "name": "deluge-cmd",
-  "productName": "deluge-cmd",
-  "version": "0.9.0",
-  "description": "Synthstrom Deluge sample mover",
+  "productName": "Deluge Commander",
+  "version": "0.9.9",
+  "description": "Synthstrom Deluge sample manager",
   "main": "src/index.js",
   "scripts": {
     "start": "electron-forge start",

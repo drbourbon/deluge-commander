@@ -389,9 +389,13 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
 
         for (let file of files) {
             if(file.startsWith('.')) continue;
+
             let fpath = slash(path.join(cpath, file));
             fs.stat(fpath, (err,stats)=>{
                 if(err) throw err;
+
+                if(!stats.isDirectory() && path.extname(file).toLowerCase()!=='.wav') return;
+
                 let item;
                 const relative_path = slash(path.relative(cardRootPath(), fpath));
                 if(stats.isDirectory()){
