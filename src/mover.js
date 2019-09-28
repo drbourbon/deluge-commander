@@ -7,6 +7,7 @@ const settings = require('electron-settings');
 const slash = require('slash');
 const trash = require('trash');
 const matchAll = require("match-all");
+const JSZip = require("jszip");
 
 import {Volume, createFsFromVolume} from 'memfs';
 
@@ -230,8 +231,22 @@ exports.samplesReferencesInFile = function(file_path) {
     const regex = /<fileName>(.+?)<\/fileName>|filePath="(.+?)"/g;
     let wavs = matchAll(data,regex).toArray();
 //    let wavs = data.match(/<fileName>(.+)<\/fileName>/g);
-    console.log(wavs);
+//    console.log(wavs);
     return wavs;
+}
+
+exports.saveArtefact = function(file_path, wavs, to_path) {
+    const relative_file_name = slash(path.relative(cardRootPath(), file_path));
+    var zip = new JSZip();
+    zip.file(relative_file_name, fs.readFileSync(file_path));
+    wavs.forEach(w => {
+        const wpath = path.join(cardRootPath(),w);
+        zip.file(w, fs.readFileSync(wpath));
+    })
+    zip.generateNodeStream({type:'nodebuffer',streamFiles:true}).pipe(fs.createWriteStream(to_path))
+    .on('finish', function () {
+        console.log(to_path + " written.");
+    });    
 }
 
 // [FB] syncronous functions used to double check actual files before doing potentially destructive operations

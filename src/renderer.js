@@ -15,6 +15,8 @@ const slash = require('slash');
 const getSize = require('get-folder-size');
 const filesize = require('filesize');
 
+import getPath from 'platform-folders';
+
 const webAudioBuilder = require('waveform-data/webaudio');
 
 const mover = require('./mover.js');
@@ -52,13 +54,13 @@ function setRoot() {
 
 let currently_playing = null;
 
-function sharePatch() {
+function exportArtefact() {
     const patch_paths = dialog.showOpenDialog(
         {
-            title:'Choose synth to share', 
+            title:'Choose synth/kit/song to export', 
             defaultPath: cardRootPath(),
             filters: [
-                { name: 'Synths', extensions: ['xml', 'XML'] }
+                { name: 'Deluge files', extensions: ['xml', 'XML'] }
             ],
             properties: ['openFile']
         });
@@ -78,7 +80,20 @@ function sharePatch() {
     });
 
     if(confirmation && confirmation===1){
-        dialog.showErrorBox('TBD','Soon');
+        let default_name = path.basename(relative_patch_path,'.XML');
+        let artefact_save_path = dialog.showSaveDialog({
+            defaultPath: path.join(getPath('desktop'),default_name),
+            filters: [{
+                name: 'Deluge compressed artifact',
+                extensions: ['zip']
+              }]
+        })
+        if(!artefact_save_path) return;
+        try {
+            mover.saveArtefact(patch_path, sample_refs, artefact_save_path);
+        } catch (error) {
+            dialog.showErrorBox('error exporting artefact',error.message);
+        }
     }
 }
 
