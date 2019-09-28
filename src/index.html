@@ -31,6 +31,10 @@ body {
   background-origin: padding-box;
 }
 
+.deluge-folder h5 {
+  display: inline;
+}
+
 .checked, .checked:hover {
   background-color: orange;
 }
@@ -41,6 +45,22 @@ body {
   padding: 0;
   border: 0;
 }
+.breadcrumb, .breadcrumb-item {
+  white-space: nowrap;
+}
+.breadcrumb .breadcrumb-item {
+  float: none;
+}
+.breadcrumb {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.breadcrumb-item {
+  max-width: 200px; 
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
     </style>
   </head>
   <body>
@@ -48,6 +68,7 @@ body {
     <nav class="navbar fixed-top navbar-light bg-light">
       <div id="pwd" class="m-0" aria-label="breadcrumb"></div>
       <div class="nav-text">
+        <button onclick="sharePatch()" class="btn btn-sm btn-outline-primary"><i class="fa fa-cloud" aria-hidden="true"></i> </button>
         <button onclick="newFolder()" class="btn btn-sm btn-outline-primary"><i class="fa fa-plus" aria-hidden="true"></i> </button>
         <!--button onclick="toggleMulti()" class="btn btn-sm btn-outline-primary"><i class="fa fa-list-ul" aria-hidden="true"></i> </button-->
   

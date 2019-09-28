@@ -12,6 +12,8 @@ const prettyBytes = require('pretty-bytes');
 const prompt = require('electron-prompt');
 const fileUrl = require('file-url');
 const slash = require('slash');
+const getSize = require('get-folder-size');
+const filesize = require('filesize');
 
 const webAudioBuilder = require('waveform-data/webaudio');
 
@@ -49,6 +51,36 @@ function setRoot() {
 }
 
 let currently_playing = null;
+
+function sharePatch() {
+    const patch_paths = dialog.showOpenDialog(
+        {
+            title:'Choose synth to share', 
+            defaultPath: cardRootPath(),
+            filters: [
+                { name: 'Synths', extensions: ['xml', 'XML'] }
+            ],
+            properties: ['openFile']
+        });
+    if(!patch_paths) return;
+
+    let patch_path = patch_paths[0];
+    let relative_patch_path = path.relative(cardRootPath(), patch_path);
+    let sample_refs = mover.samplesReferencesInFile(patch_path);
+
+    let detail_message = sample_refs.length>0 ? `includes: ${sample_refs.join(', ')}.` : '';
+
+    let confirmation = dialog.showMessageBox({
+        type: 'question',
+        message: `Sharing ${relative_patch_path}. Proceed?`,
+        detail: detail_message,
+        buttons: ['Cancel','OK']
+    });
+
+    if(confirmation && confirmation===1){
+        dialog.showErrorBox('TBD','Soon');
+    }
+}
 
 function newFolder() {
     prompt({
@@ -127,6 +159,32 @@ function deleteSample(sample_path) {
             dialog.showErrorBox('error deleting sample',error.message);
         }
     }
+}
+
+function deleteFolder(sample_folder) {
+    const absolute_folder_path = path.join(cardRootPath(), sample_folder);
+    const usages = mover.usages(absolute_folder_path);
+
+    if(usages.length>0){
+        dialog.showErrorBox(`Can't delete because sample ${sample_folder} is used by ${usages.join(', ')}`);
+        return;
+    }
+
+    let confirmation = dialog.showMessageBox({
+        type: 'question',
+        message: `Deleting ${sample_folder}. Proceed?`,
+        buttons: ['Cancel','OK']
+    });
+
+    if(confirmation && confirmation===1){
+        try {
+            mover.delete(absolute_folder_path);
+            readFolder(currentPath);
+        } catch (error) {
+            dialog.showErrorBox('error deleting folder',error.message);
+        }
+    }
+
 }
 
 function renameFolder(sample_folder) {
@@ -336,12 +394,13 @@ function setCurrentPath(cpath) {
 // 'C:\Users\drb\Documents\deluge-commander\UsersdrbDesktopBACKUP DELUGE 2SAMPLES
 //const file_bootstrap_class = 'list-group-item d-flex justify-content-between align-items-center';
 const file_bootstrap_class = 'list-group-item list-group-item-action';
+
 //const id_regexp = new RegExp(path.sep,'g');
 
 function renderFile(name, fpath, renderMode, isDirectory) {
     if(isDirectory){
 //        return $(`<a href="#" data-path="${fpath}" class="deluge-folder ${file_bootstrap_class}" onclick="readFolder(this.dataset.path)"><h5><i class="fa fa-folder-open"></i> ${name}</h5> <span class="actions text-right float-right"></span></div></a>`);
-        return $(`<div data-path="${fpath}" class="deluge-folder ${file_bootstrap_class}"><h5><i class="fa fa-folder-open"></i> ${name}</h5> <span class="actions text-right float-right"></span></div>`)
+        return $(`<div data-path="${fpath}" class="deluge-folder ${file_bootstrap_class}"><h5><i class="fa fa-folder-open"></i> ${name} <span class="counter badge badge-primary badge-pill"></span></h5> <span class="actions text-right float-right"></span></div>`)
     } else {
         return $(`<div data-path="${fpath}" class="deluge-sample ${file_bootstrap_class} loading-sample"><h5><i class="fa fa-file-audio-o"></i> ${name} <span class="counter badge badge-primary badge-pill"></span></h5> <span class="actions text-right float-right"></span></div>`)
     }
@@ -408,8 +467,8 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                 
                 $('#sample-files').append(item);
 
+                const my_item = item;
                 if(!stats.isDirectory()){
-                    const my_item = item;
 
                     mover.usagesAsync(fpath).then((usages)=>{
                         let actions = my_item.find('.actions');
@@ -501,11 +560,13 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                     });
 
                     wavFileInfo.infoByFilename(fpath, (err,info) => {
-                        if (err && err.invalid_reasons[0].startsWith('chunk_size')) return;
+                        if (err && err.invalid_reasons[0].startsWith('chunk_size')) {
+                            console.log(err);
+                            return;
+                        };
                         if (err) throw err;
 
                         let rinfo = $(`<div><small class='wav-info'></small></div>`);
-
                         [
                             ['rate', info.header.sample_rate, 'Hz'],
                             ['duration', moment.duration(Math.round(info.duration * 1000)).format(), ''],
@@ -523,7 +584,37 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
 
                 } else {
                     // sample directory actions
-                    let actions = item.find('.actions');
+                    let actions = my_item.find('.actions');
+
+                    mover.usagesAsync(fpath).then((usages)=>{
+                        if(usages.length==0){
+                            actions.append(`<button onclick="deleteFolder('${relative_path}')" class="btn btn-outline-danger btn-sm ml-2"><i class="fa fa-trash"></i></button>`);
+                        } else {
+                            my_item.find('.counter').append(usages.length);
+
+                            /*
+                            let usages_rendered = usages.map(((x)=>{ 
+                                let badge_type = x.startsWith('KITS') ? 'badge-success' : (x.startsWith('SONGS') ? 'badge-primary' : 'badge-info');
+                                return `<span class="badge ${badge_type}">${x}</span>`;
+                            })).join(" ");
+
+                            my_item.append(`<div>${usages_rendered}</div>`);
+                            */
+                        }
+                    });
+
+                    getSize(fpath, (err,size) => {
+                        if (err) throw err;
+
+                        let dinfo = $(`<div><small class='wav-info'></small></div>`);
+                        [
+                            ['size', filesize(size), '']
+                        ].forEach((el)=>{
+                            dinfo.find('.wav-info').append(`${el[0]}: <strong>${el[1]}${el[2]}</strong> `);
+                        });
+                        my_item.append(dinfo);
+                    });
+
                     actions.append(`<button onclick="readFolder('${fpath}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-folder-open-o fa-lg" aria-hidden="true"></i></button>`);
                     if(file!=='RESAMPLE' && file!=='RECORD'){
                         actions.append(`<button onclick="renameFolder('${relative_path}')" class="btn btn-outline-primary btn-sm ml-2"><i class="fa fa-pencil-square-o fa-lg" aria-hidden="true"></i></button>`)

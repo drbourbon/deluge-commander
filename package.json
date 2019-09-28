@@ -1,7 +1,7 @@
 {
   "name": "deluge-cmd",
   "productName": "Deluge Commander",
-  "version": "0.9.9",
+  "version": "1.0.0",
   "description": "Synthstrom Deluge sample manager",
   "main": "src/index.js",
   "scripts": {
@@ -48,29 +48,34 @@
     }
   },
   "dependencies": {
-    "bootstrap": "^4.1.1",
+    "bootstrap": "^4.2.1",
     "electron-compile": "^6.4.3",
     "electron-prompt": "^1.0.0",
     "electron-remote": "^1.3.0",
     "electron-settings": "^3.2.0",
     "electron-squirrel-startup": "^1.0.0",
     "electron-window-state-manager": "^0.3.2",
-    "fast-xml-parser": "^3.11.1",
+    "fast-xml-parser": "^3.12.11",
     "file-url": "^2.0.2",
+    "filesize": "^4.1.2",
     "font-awesome": "^4.7.0",
-    "howler": "^2.0.13",
+    "get-folder-size": "^2.0.1",
+    "howler": "^2.1.1",
     "jquery": "^3.3.1",
-    "memfs": "^2.9.4",
-    "moment": "^2.22.2",
+    "match-all": "^1.2.5",
+    "memfs": "^2.14.2",
+    "moment": "^2.23.0",
     "moment-duration-format": "^2.2.2",
+    "node-abi": "^2.5.1",
     "path-is-inside": "^1.0.2",
-    "popper.js": "^1.14.3",
+    "popper.js": "^1.14.6",
     "pretty-bytes": "^5.1.0",
     "slash": "^2.0.0",
-    "videojs-wavesurfer": "^2.5.0",
+    "trash": "^4.3.0",
+    "videojs-wavesurfer": "^2.6.3",
     "wav-file-info": "0.0.8",
-    "waveform-data": "^2.0.2",
-    "yargs": "^12.0.1"
+    "waveform-data": "^2.1.2",
+    "yargs": "^12.0.5"
   },
   "devDependencies": {
     "babel-plugin-transform-async-to-generator": "^6.24.1",
@@ -80,8 +85,8 @@
     "electron-prebuilt-compile": "2.0.4",
     "eslint": "^3.19.0",
     "eslint-config-airbnb": "^15.1.0",
-    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-jsx-a11y": "^5.1.1",
-    "eslint-plugin-react": "^7.10.0"
+    "eslint-plugin-react": "^7.12.1"
   }
 }

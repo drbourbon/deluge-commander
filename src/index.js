@@ -6,12 +6,29 @@ const settings = require('electron-settings');
 //const {Menu} = require('electron');
 const mover = require('./mover.js');
 
+//require('electron-debug')();
+
 const argv = require('yargs')
+  .option('reset',{
+    'description':'Reset app preferences',
+  })
+  /*
+  .command({
+    command: 'reset',
+    desc: 'Reset app preferences',
+    handler: (argv)=>{
+      settings.deleteAll();
+      console.log('App settings have been reset');
+      app.quit();
+    }
+  })
+  */
   .command({
     command: 'usages <sample_file>',
     desc: 'List references of <sample_file> in Deluge SD card folders',
     handler: (argv)=>{
       const occ = mover.usages(argv.sample_file);
+      console.log(`Showing usages for ${argv.sample_file}`);
       console.log(occ.join(', '));
       app.quit();
     }
@@ -30,13 +47,21 @@ const argv = require('yargs')
       app.quit();
     }
   })
+  .help()
   .argv;
 
 function checkIfCalledViaCLI(args){
+  if(argv.deb || argv.reset) return false;
 	if(args && args.length > 2){
 		return true;
 	}
 	return false;
+}
+
+function calledFromCard() {
+  const appPath = app.getAppPath();
+  console.log(`Called from ${appPath}`);
+  return mover.validRootPath(appPath);
 }
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -79,29 +104,45 @@ const menu = Menu.buildFromTemplate(appMenu);
 */
 
 const createWindow = () => {
-	let cardRootPath = settings.get('card_root');
-	let isCalledViaCLI = checkIfCalledViaCLI(process.argv);
+  let cardRootPath;
+  let isCalledViaCLI = checkIfCalledViaCLI(process.argv);
 
-  if(argv.card_root && mover.validRootPath(argv.card_root)){
-    settings.set('card_root', argv.card_root);
-    cardRootPath = argv.card_root;
+  argv.reset = true;
+  // REMOVE ME
+//  argv.deb = true;
+
+  if(argv.reset){
+    settings.deleteAll();
+    console.log('Resetting app settings');
   }
 
-  if(!cardRootPath || ! mover.validRootPath(cardRootPath)){
-    let choosen_root_path = dialog.showOpenDialog({properties: ['openDirectory']});
-    if(choosen_root_path && mover.validRootPath(choosen_root_path[0])) {
-      settings.set('card_root', choosen_root_path[0]);
-      cardRootPath = choosen_root_path;
-    } else {
-      cardRootPath = null;
+  if(calledFromCard()){
+    settings.set('card_root', app.getAppPath());
+  } else {
+    cardRootPath = settings.get('card_root');
+  
+    if(argv.card_root && mover.validRootPath(argv.card_root)){
+      settings.set('card_root', argv.card_root);
+      cardRootPath = argv.card_root;
+    }
+  
+    if(!cardRootPath || ! mover.validRootPath(cardRootPath)){
+      let choosen_root_path = dialog.showOpenDialog({properties: ['openDirectory']});
+      if(choosen_root_path && mover.validRootPath(choosen_root_path[0])) {
+        settings.set('card_root', choosen_root_path[0]);
+        cardRootPath = choosen_root_path;
+      } else {
+        cardRootPath = null;
+      }
+    }
+
+    if(!cardRootPath){
+      dialog.showErrorBox('error','Invalid Deluge SD card root');
+      app.quit();
+      return;
     }
   }
 
-  if(!cardRootPath){
-    dialog.showErrorBox('error','Invalid Deluge SD card root');
-    app.quit();
-    return;
-  }
 
   console.log("Deluge card root set to " + cardRootPath);
 
@@ -137,7 +178,8 @@ const createWindow = () => {
     mainWindow.loadURL(`file://${__dirname}/index.html`);
 
     // Open the DevTools.
-    //mainWindow.webContents.openDevTools();
+    if(argv.deb)
+      mainWindow.webContents.openDevTools();
 	}
 
   mainWindow.on('close', () => {

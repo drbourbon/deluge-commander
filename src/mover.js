@@ -5,6 +5,8 @@ const util = require('util');
 var pathIsInside = require("path-is-inside");
 const settings = require('electron-settings');
 const slash = require('slash');
+const trash = require('trash');
+const matchAll = require("match-all");
 
 import {Volume, createFsFromVolume} from 'memfs';
 
@@ -39,6 +41,8 @@ const mem_load_path = function(what) {
 }
 
 const load_card = function(reset = true) {
+    console.log('card cache sync started..');
+
     if(reset){
         vol.reset();
         vol.mkdirpSync(path.join('/','SONGS'));
@@ -59,6 +63,7 @@ const load_card = function(reset = true) {
         console.log(files);
     });
     */
+   console.log('card cache sync completed!');
 }
 exports.sync_from_card = load_card;
 
@@ -95,14 +100,21 @@ const rewrite_folder_ref = function(xml_file, source_relative, destination_relat
     fs.writeFileSync(temp_name,new_data,"ascii"); 
 }
 
+// works for folders as well
 exports.delete = function(sample_path) {
     if(!fs.existsSync(sample_path)){
         throw new Error(`Sample ${sample_path} not found`);
     }
     try {
-        fs.unlinkSync(sample_path);
+        (async () => {
+            await trash([sample_path]);
+        })();
+
+//        fs.unlinkSync(sample_path);
     } catch (error) {
         throw error;
+    } finally {
+        mover.sync_from_card();
     }
 }
 
@@ -212,6 +224,16 @@ exports.validSampleDestinationPath = function(dpath) {
     return pathIsInside(dpath, sample_root);
 }
 
+exports.samplesReferencesInFile = function(file_path) {
+    let relative_file_name = slash(path.relative(cardRootPath(), file_path));
+    const data = fs.readFileSync(file_path,'utf8');
+    const regex = /<fileName>(.+?)<\/fileName>|filePath="(.+?)"/g;
+    let wavs = matchAll(data,regex).toArray();
+//    let wavs = data.match(/<fileName>(.+)<\/fileName>/g);
+    console.log(wavs);
+    return wavs;
+}
+
 // [FB] syncronous functions used to double check actual files before doing potentially destructive operations
 
 const scan_dir = function(sample_file_name, scan_path) {
@@ -257,8 +279,10 @@ const readdirP = util.promisify(fs.readdir);
 */
 
 const sample_occurs_in_file = async function(sample_file_name, file_path) {
+    const is_file = path.extname(sample_file_name).toUpperCase().endsWith('WAV');
     const data = await readfileP(file_path);
-    if(data.indexOf(sample_file_name)>-1){
+    const safe_file_name = is_file ? sample_file_name : sample_file_name + '/';
+    if(data.indexOf(safe_file_name)>-1){
 //        let relative_name = path.relative(cardRootPath(), file_path);
         return true;
     }
@@ -300,6 +324,9 @@ const usagesAsync = async function(sample_file) {
     */
 
     const all = songs.concat(synths, kits);
+
+    console.log(sample_file);
+    console.log(all);
     return all;
 
 }
