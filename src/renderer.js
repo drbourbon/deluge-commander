@@ -15,8 +15,6 @@ const slash = require('slash');
 const getSize = require('get-folder-size');
 const filesize = require('filesize');
 
-import getPath from 'platform-folders';
-
 const webAudioBuilder = require('waveform-data/webaudio');
 
 const mover = require('./mover.js');
@@ -82,7 +80,7 @@ function exportArtefact() {
     if(confirmation && confirmation===1){
         let default_name = path.basename(relative_patch_path,'.XML');
         let artefact_save_path = dialog.showSaveDialog({
-            defaultPath: path.join(getPath('desktop'),default_name),
+            defaultPath: path.join(require('os').homedir(),default_name),
             filters: [{
                 name: 'Deluge compressed artifact',
                 extensions: ['zip']
