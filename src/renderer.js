@@ -80,7 +80,7 @@ function exportArtefact() {
     if(confirmation && confirmation===1){
         let default_name = path.basename(relative_patch_path,'.XML');
         let artefact_save_path = dialog.showSaveDialog({
-            defaultPath: path.join(require('os').homedir(),default_name),
+            defaultPath: path.join(mover.getSavePath(),default_name),
             filters: [{
                 name: 'Deluge compressed artifact',
                 extensions: ['zip']
@@ -89,6 +89,11 @@ function exportArtefact() {
         if(!artefact_save_path) return;
         try {
             mover.saveArtefact(patch_path, sample_refs, artefact_save_path);
+            mover.setSavePath(path.dirname(artefact_save_path));
+            dialog.showMessageBox({
+                type: 'info',
+                message: `${artefact_save_path} successfully saved`
+            });
         } catch (error) {
             dialog.showErrorBox('error exporting artefact',error.message);
         }

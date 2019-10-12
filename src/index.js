@@ -107,7 +107,9 @@ const createWindow = () => {
   let cardRootPath;
   let isCalledViaCLI = checkIfCalledViaCLI(process.argv);
 
-  argv.reset = true;
+  
+  // argv.reset = true;
+
   // REMOVE ME
 //  argv.deb = true;
 

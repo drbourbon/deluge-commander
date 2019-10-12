@@ -19,6 +19,14 @@ const cardRootPath = function() {
 
 exports.cardRootPath = cardRootPath;
 
+exports.setSavePath = function(val) {
+    settings.set('save_path',val);
+}
+
+exports.getSavePath = function() {
+    return settings.get('save_path', require('os').homedir());
+}
+
 let vol = Volume.fromJSON({'/SONGS':0, '/KITS':0, '/SYNTHS':0 });
 let mfs = createFsFromVolume(vol);
 
@@ -75,11 +83,18 @@ const rewrite_wav_ref = function(xml_file, source_relative, destination_relative
 
     // TODO double check the encoding
     let data = fs.readFileSync(xml_file, { encoding: "ascii" });
-    let regex = new RegExp(`<fileName>${slashed_source_relative}<\/fileName>`,'g');
 
+    let regex = new RegExp(`<fileName>${slashed_source_relative}<\/fileName>`,'ig');
     // [FB] this is the important stuff!!
     let new_data = data.replace(regex, '<fileName>' + slashed_destination_relative + '<\/fileName>');
-//    let new_data = data.replace(/<fileName>[\s\S]*?<\/fileName>/, '<fileName>' + slashed_destination_relative + '<\/fileName>');
+
+    let regex3 = new RegExp(`filePath="${slashed_source_relative}"`,'ig');
+    // [FB] this is the important stuff!!
+    new_data = new_data.replace(regex3, 'filePath="' + slashed_destination_relative + '"');
+
+    let regex2 = new RegExp(`fileName="${slashed_source_relative}"`,'ig');
+    // [FB] this is the important stuff!!
+    new_data = new_data.replace(regex2, 'fileName="' + slashed_destination_relative + '"');
 
     let temp_name = xml_file + '.new';
     fs.writeFileSync(temp_name,new_data,"ascii"); 
@@ -88,14 +103,22 @@ const rewrite_wav_ref = function(xml_file, source_relative, destination_relative
 const rewrite_folder_ref = function(xml_file, source_relative, destination_relative) {
     const slashed_source_relative = slash(source_relative);
     const slashed_destination_relative = slash(destination_relative);
-    console.log(`${xml_file}: rewriting references to ${slashed_source_relative} to ${slashed_destination_relative}`);
+    console.log(`${xml_file}: rewriting folder references to '${slashed_source_relative}' to '${slashed_destination_relative}'`);
 
     // TODO double check the encoding
     let data = fs.readFileSync(xml_file, { encoding: "ascii" });
-    let regex = new RegExp(`<fileName>${slashed_source_relative}`,'g');
 
+    let regex = new RegExp(`<fileName>${slashed_source_relative}`,'ig');
     // [FB] this is the important stuff!!
     let new_data = data.replace(regex, '<fileName>' + slashed_destination_relative);
+
+    let regex3 = new RegExp(`filePath="${slashed_source_relative}`,'ig');
+    // [FB] this is the important stuff!!
+    new_data = new_data.replace(regex3, 'filePath="' + slashed_destination_relative);
+
+    let regex2 = new RegExp(`fileName="${slashed_source_relative}`,'ig');
+    // [FB] this is the important stuff!!
+    new_data = new_data.replace(regex2, 'fileName="' + slashed_destination_relative);
 
     let temp_name = xml_file + '.new';
     fs.writeFileSync(temp_name,new_data,"ascii"); 
@@ -166,7 +189,7 @@ exports.move_folder = function(source, dest, usages, is_renaming = false) {
 }
 
 exports.move = function(source, dest_path, usages) {
-    const is_renaming = path.extname(dest_path).endsWith('WAV');
+    const is_renaming = path.extname(dest_path).toUpperCase().endsWith('WAV');
 
     const source_relative = path.relative(cardRootPath(), source);
     const source_filename = path.basename(source);
@@ -228,7 +251,7 @@ exports.validSampleDestinationPath = function(dpath) {
 exports.samplesReferencesInFile = function(file_path) {
     let relative_file_name = slash(path.relative(cardRootPath(), file_path));
     const data = fs.readFileSync(file_path,'utf8');
-    const regex = /<fileName>(.+?)<\/fileName>|filePath="(.+?)"/g;
+    const regex = /<fileName>(.+?)<\/fileName>|filePath="(.+?)"|fileName="(.+?)"/g;
     let wavs = matchAll(data,regex).toArray();
 //    let wavs = data.match(/<fileName>(.+)<\/fileName>/g);
 //    console.log(wavs);
@@ -249,29 +272,10 @@ exports.saveArtefact = function(file_path, wavs, to_path) {
     });    
 }
 
-// [FB] syncronous functions used to double check actual files before doing potentially destructive operations
-
-const scan_dir = function(sample_file_name, scan_path) {
-//    console.log('Finding usages for ' + sample_file_name + ' in ' + scan_path);
-    let found = [];
-    let files = fs.readdirSync(scan_path);
-    files.forEach(file => {
-        let file_path = path.join(scan_path, file);
-        if(path.extname(file_path).toUpperCase()!=='.XML') return;
-        let data = fs.readFileSync(file_path);
-        if(data.indexOf(sample_file_name)>-1){
-            let relative_name = path.relative(cardRootPath(), file_path);
-//            console.log(sample_file_name + ' used in ' + relative_name);
-            found.push(relative_name);
-        }
-
-    });
-    return found;
-};
 
 const usages = function(sample_file) {
     let relative_sample_file_name = slash(path.relative(cardRootPath(), sample_file));
-//    console.log('finding usages for: ' + relative_sample_file_name);
+    console.log('finding usages for: ' + relative_sample_file_name);
     let occurences = [];
     occurences = occurences.concat(scan_dir(relative_sample_file_name, path.join(cardRootPath(), 'SONGS')));
     occurences = occurences.concat(scan_dir(relative_sample_file_name, path.join(cardRootPath(), 'SYNTHS')));
@@ -295,14 +299,48 @@ const readdirP = util.promisify(fs.readdir);
 
 const sample_occurs_in_file = async function(sample_file_name, file_path) {
     const is_file = path.extname(sample_file_name).toUpperCase().endsWith('WAV');
-    const data = await readfileP(file_path);
+    const data = await readfileP(file_path, 'utf8');
     const safe_file_name = is_file ? sample_file_name : sample_file_name + '/';
-    if(data.indexOf(safe_file_name)>-1){
-//        let relative_name = path.relative(cardRootPath(), file_path);
+    // [TODO] temp fix for case sensitivity issue
+    
+    const imatch = new RegExp(safe_file_name, 'i');
+    if(imatch.test(data)){
         return true;
     }
     return false;
 }
+
+const sample_occurs_in_file_sync =  function(sample_file_name, file_path) {
+    const is_file = path.extname(sample_file_name).toUpperCase().endsWith('WAV');
+    const data = fs.readFileSync(file_path, 'utf8');
+    const safe_file_name = is_file ? sample_file_name : sample_file_name + '/';
+
+    // [TODO] temp fix for case sensitivity issue
+    const imatch = new RegExp(safe_file_name, 'i');
+    if(imatch.test(data)){
+        return true;
+    }
+    return false;
+}
+
+// [FB] syncronous functions used to double check actual files before doing potentially destructive operations
+const scan_dir = function(sample_file_name, scan_path) {
+    console.log('Finding usages for ' + sample_file_name + ' in ' + scan_path);
+    let found = [];
+    let files = fs.readdirSync(scan_path);
+    files.forEach(file => {
+        let file_path = path.join(scan_path, file);
+        if(path.extname(file_path).toUpperCase()!=='.XML') return;
+        const occurs = sample_occurs_in_file_sync(sample_file_name, file_path);
+        if(occurs){
+            let relative_name = path.relative(cardRootPath(), file_path);
+//            console.log(sample_file_name + ' used in ' + relative_name);
+            found.push(relative_name);
+        }
+
+    });
+    return found;
+};
 
 const scan_dir_async = async function(sample_file_name, scan_path) {
 //        console.log('Finding usages for ' + sample_file_name + ' in ' + scan_path);
@@ -310,8 +348,8 @@ const scan_dir_async = async function(sample_file_name, scan_path) {
     const files = await readdirP(scan_path);
     for (let file of files) {
         let file_path = path.join(scan_path, file);
-        //console.log(file_path + ' has ' + sample_file_name + ' ..');
         if(path.extname(file_path).toUpperCase()!=='.XML') continue;
+//        console.log('Testing ' + file_path + ' for referring ' + sample_file_name + ' ..');
         const occurs = await sample_occurs_in_file(sample_file_name, file_path);
         if(occurs) {
             let relative_name = path.relative('/', file_path);
