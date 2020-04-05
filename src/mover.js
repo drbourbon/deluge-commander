@@ -297,13 +297,17 @@ const readfileP = util.promisify(fs.readFile);
 const readdirP = util.promisify(fs.readdir);
 */
 
+const escapeRegExp = (string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 const sample_occurs_in_file = async function(sample_file_name, file_path) {
     const is_file = path.extname(sample_file_name).toUpperCase().endsWith('WAV');
     const data = await readfileP(file_path, 'utf8');
     const safe_file_name = is_file ? sample_file_name : sample_file_name + '/';
     // [TODO] temp fix for case sensitivity issue
     
-    const imatch = new RegExp(safe_file_name, 'i');
+    const imatch = new RegExp(escapeRegExp(safe_file_name), 'i');
     if(imatch.test(data)){
         return true;
     }
@@ -316,7 +320,7 @@ const sample_occurs_in_file_sync =  function(sample_file_name, file_path) {
     const safe_file_name = is_file ? sample_file_name : sample_file_name + '/';
 
     // [TODO] temp fix for case sensitivity issue
-    const imatch = new RegExp(safe_file_name, 'i');
+    const imatch = new RegExp(escapeRegExp(safe_file_name), 'i');
     if(imatch.test(data)){
         return true;
     }

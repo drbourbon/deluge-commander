@@ -578,11 +578,13 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                     });
 
                     wavFileInfo.infoByFilename(fpath, (err,info) => {
-                        if (err && err.invalid_reasons[0].startsWith('chunk_size')) {
+                        if (err) {
+                            // [FB] unharming rendering error: safely ignoring it
+//                            if (err && err.invalid_reasons[0].startsWith('chunk_size')) {
                             console.log(err);
                             return;
                         };
-                        if (err) throw err;
+                        //if (err) throw err;
 
                         let rinfo = $(`<div><small class='wav-info'></small></div>`);
                         [

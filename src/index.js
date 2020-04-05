@@ -3,7 +3,7 @@ import { addBypassChecker } from 'electron-compile';
 import { app, BrowserWindow, dialog } from 'electron';
 const WindowStateManager = require('electron-window-state-manager');
 const settings = require('electron-settings');
-//const {Menu} = require('electron');
+const {Menu} = require('electron');
 const mover = require('./mover.js');
 
 //require('electron-debug')();
@@ -83,8 +83,20 @@ const mainWindowState = new WindowStateManager('mainWindow', {
   defaultHeight: 768
 });
 
-/*
-const appMenu = [
+let enableWaveformView = function(val) {
+  let curval = !settings.get('disable_waveforms');
+  if(val!=null && curval!=val){
+    settings.set('disable_waveforms', !val);
+    curval = !val;
+  }
+  console.log("Waveform display: " + !settings.get('disable_waveforms'));
+  appMenu[0].submenu[1].visible = !curval;
+  appMenu[0].submenu[2].visible = curval;
+  let menu = Menu.buildFromTemplate(appMenu);
+  Menu.setApplicationMenu(menu);
+}
+
+let appMenu = [
   {
     label: 'View',
     submenu: [
@@ -95,13 +107,38 @@ const appMenu = [
         } 
       },
       {
-        label: 'Toggle show/hide waveforms'
+        id: 'enable-waveforms',
+        label: 'Enable waveforms rendering',
+        click (item, focusedWindow) {
+          enableWaveformView(true);
+        }
+      },      
+      {
+        id: 'disable-waveforms',
+        label: 'Disable waveforms rendering',
+        click (item, focusedWindow) {
+          enableWaveformView(false);
+        }
+      },      
+      { type: 'separator' },
+      { role: 'toggledevtools' },
+      { type: 'separator' },
+      { role: 'quit' }
+    ]
+  },
+  {
+    role: 'help',
+    submenu: [
+      {
+        label: 'Learn More',
+        click: async () => {
+          const { shell } = require('electron')
+          await shell.openExternal('https://neuma.studio/deluge-commander.html')
+        }
       }
     ]
   }
 ];
-const menu = Menu.buildFromTemplate(appMenu);
-*/
 
 const createWindow = () => {
   let cardRootPath;
@@ -151,7 +188,8 @@ const createWindow = () => {
   if(argv.disable_waveforms){
     settings.set('disable_waveforms', argv.disable_waveforms === 'true');
   }
-  console.log("Waveform display: " + !settings.get('disable_waveforms'));
+  enableWaveformView(null);
+//  console.log("Waveform display: " + !settings.get('disable_waveforms'));
 
 //  mover.load_card();
   
@@ -170,7 +208,7 @@ const createWindow = () => {
       }
     });
     
-    //Menu.setApplicationMenu(menu);
+//    Menu.setApplicationMenu(menu);
 
     if (mainWindowState.maximized) {
       mainWindow.maximize();
