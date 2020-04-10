@@ -4,6 +4,7 @@ const util = require('util');
 //const parser = require('fast-xml-parser');
 var pathIsInside = require("path-is-inside");
 const settings = require('electron-settings');
+//const { prefEnabled } = require('./preferences');
 const slash = require('slash');
 const trash = require('trash');
 const matchAll = require("match-all");
@@ -25,6 +26,10 @@ exports.setSavePath = function(val) {
 
 exports.getSavePath = function() {
     return settings.get('save_path', require('os').homedir());
+}
+
+exports.getSyncOps = function() {
+    return true;// settings.get('sync_operations');
 }
 
 let vol = Volume.fromJSON({'/SONGS':0, '/KITS':0, '/SYNTHS':0 });
@@ -49,10 +54,13 @@ const mem_load_path = function(what) {
 
 }
 
-const load_card = function(reset = true) {
-    console.log('card cache sync started..');
+const load_card = function(reset) {
+    if(reset==false && mover.getSyncOps()==true) reset = true;
+
+    console.log(`${reset?"full ":""}card cache sync started..`);
 
     if(reset){
+        purge_cache();
         vol.reset();
         vol.mkdirpSync(path.join('/','SONGS'));
         vol.mkdirpSync(path.join('/','KITS'));
@@ -124,21 +132,23 @@ const rewrite_folder_ref = function(xml_file, source_relative, destination_relat
     fs.writeFileSync(temp_name,new_data,"ascii"); 
 }
 
+let my_trash = function(sample){
+    (async () => {
+        await trash([sample]);
+    })();
+}
+
 // works for folders as well
 exports.delete = function(sample_path) {
     if(!fs.existsSync(sample_path)){
         throw new Error(`Sample ${sample_path} not found`);
     }
     try {
-        (async () => {
-            await trash([sample_path]);
-        })();
-
-//        fs.unlinkSync(sample_path);
+        my_trash([sample_path])
     } catch (error) {
         throw error;
     } finally {
-        mover.sync_from_card();
+        load_card();
     }
 }
 
@@ -365,22 +375,41 @@ const scan_dir_async = async function(sample_file_name, scan_path) {
     return found;
 };
 
+let usage_cache = [];
+
+let purge_cache = function() {
+    usage_cache = [];
+}
+
+let add_cache = function(el) {
+    usage_cache.push(el);
+}
+
 // [FB] sample_file is either a .wav file or a sample directory
 const usagesAsync = async function(sample_file) {
 //    let is_dir = fs.lstatSync(sample_file).isDirectory();
     let relative_sample_file_name = slash(path.relative(cardRootPath(), sample_file));
 
-    const songs = await scan_dir_async(relative_sample_file_name, path.join('/','SONGS'));
-    const synths = await scan_dir_async(relative_sample_file_name, path.join('/','SYNTHS'));
-    const kits = await scan_dir_async(relative_sample_file_name, path.join('/','KITS'));
-
-    /*
-    const songs = await scan_dir_async(relative_sample_file_name, path.join(cardRootPath(), 'SONGS'));
-    const synths = await scan_dir_async(relative_sample_file_name, path.join(cardRootPath(), 'SYNTHS'));
-    const kits = await scan_dir_async(relative_sample_file_name, path.join(cardRootPath(), 'KITS'));
-    */
-
-    const all = songs.concat(synths, kits);
+    var all;
+    const cached = usage_cache.find(el => { return el.key == relative_sample_file_name});
+    
+    if(mover.getSyncOps() || !cached){
+        const songs = await scan_dir_async(relative_sample_file_name, path.join('/','SONGS'));
+        const synths = await scan_dir_async(relative_sample_file_name, path.join('/','SYNTHS'));
+        const kits = await scan_dir_async(relative_sample_file_name, path.join('/','KITS'));
+    
+        /*
+        const songs = await scan_dir_async(relative_sample_file_name, path.join(cardRootPath(), 'SONGS'));
+        const synths = await scan_dir_async(relative_sample_file_name, path.join(cardRootPath(), 'SYNTHS'));
+        const kits = await scan_dir_async(relative_sample_file_name, path.join(cardRootPath(), 'KITS'));
+        */
+    
+        all = songs.concat(synths, kits);
+        add_cache({ 'key':relative_sample_file_name, 'usage':all });
+    } else {
+        console.log('found cached');
+        all = cached.usage;
+    }
 
     console.log(sample_file);
     console.log(all);

@@ -5,6 +5,7 @@ const WindowStateManager = require('electron-window-state-manager');
 const settings = require('electron-settings');
 const {Menu} = require('electron');
 const mover = require('./mover.js');
+const preferences = require('./preferences');
 
 //require('electron-debug')();
 
@@ -83,19 +84,6 @@ const mainWindowState = new WindowStateManager('mainWindow', {
   defaultHeight: 768
 });
 
-let enableWaveformView = function(val) {
-  let curval = !settings.get('disable_waveforms');
-  if(val!=null && curval!=val){
-    settings.set('disable_waveforms', !val);
-    curval = !val;
-  }
-  console.log("Waveform display: " + !settings.get('disable_waveforms'));
-  appMenu[0].submenu[1].visible = !curval;
-  appMenu[0].submenu[2].visible = curval;
-  let menu = Menu.buildFromTemplate(appMenu);
-  Menu.setApplicationMenu(menu);
-}
-
 let appMenu = [
   {
     label: 'View',
@@ -103,21 +91,14 @@ let appMenu = [
       {
         label: 'Reload',
         click (item,focusedWindow) {
-          mover.sync_from_card();
+          mover.sync_from_card(true);
         } 
       },
       {
-        id: 'enable-waveforms',
-        label: 'Enable waveforms rendering',
+        id: 'prefs',
+        label: 'Preferences',
         click (item, focusedWindow) {
-          enableWaveformView(true);
-        }
-      },      
-      {
-        id: 'disable-waveforms',
-        label: 'Disable waveforms rendering',
-        click (item, focusedWindow) {
-          enableWaveformView(false);
+          preferences.show();
         }
       },      
       { type: 'separator' },
@@ -185,11 +166,16 @@ const createWindow = () => {
 
   console.log("Deluge card root set to " + cardRootPath);
 
+  console.log(preferences.value('prefs.display'))
   if(argv.disable_waveforms){
-    settings.set('disable_waveforms', argv.disable_waveforms === 'true');
+    // [FB] TODO
   }
-  enableWaveformView(null);
-//  console.log("Waveform display: " + !settings.get('disable_waveforms'));
+  console.log(`Waveform display: ${settings.get('waveform_show')?"true (slower)":"false"}`);  
+
+  if(argv.disable_sync_ops){
+    // [FB] TODO
+  }
+  console.log(`Unbuffered operations: ${mover.getSyncOps()?"true (slower but safer)":"false"}`);  
 
 //  mover.load_card();
   
@@ -207,7 +193,10 @@ const createWindow = () => {
         webaudio:true,
       }
     });
-    
+
+    let menu = Menu.buildFromTemplate(appMenu);
+    Menu.setApplicationMenu(menu);
+      
 //    Menu.setApplicationMenu(menu);
 
     if (mainWindowState.maximized) {
@@ -220,6 +209,10 @@ const createWindow = () => {
     // Open the DevTools.
     if(argv.deb)
       mainWindow.webContents.openDevTools();
+
+
+//      preferences.show();
+
 	}
 
   mainWindow.on('close', () => {

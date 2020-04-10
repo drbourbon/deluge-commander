@@ -25,7 +25,6 @@ var momentDurationFormatSetup = require("moment-duration-format");
 momentDurationFormatSetup(moment);
 
 let cardRootPath = mover.cardRootPath; //settings.get('card_root');
-const disable_waveforms = settings.get('disable_waveforms');
 let samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
 
 let currentPath = samplesRootPath;
@@ -42,7 +41,7 @@ function setRoot() {
         settings.set('card_root', choosen_root_path[0]);
 //        cardRootPath = choosen_root_path[0];
         samplesRootPath = path.join(cardRootPath(), 'SAMPLES');
-        mover.sync_from_card();
+        mover.sync_from_card(true);
         readFolder();
       } else {
         dialog.showErrorBox('error','Invalid Deluge SD card root');
@@ -172,7 +171,8 @@ function deleteSample(sample_path) {
     if(confirmation && confirmation===1){
         try {
             mover.delete(absolute_sample_path);
-            readFolder(currentPath);
+            deleteFromFolderView(sample_path);
+//            readFolder(currentPath);
         } catch (error) {
             dialog.showErrorBox('error deleting sample',error.message);
         }
@@ -404,15 +404,13 @@ function setCurrentPath(cpath) {
         $('#pwd-list').append(`<li class="breadcrumb-item" onclick="readFolder()">${el}</li>`);
     })
     */
-
-//    mover.sync_from_card();
 }
 
 
 // 'C:\Users\drb\Documents\deluge-commander\UsersdrbDesktopBACKUP DELUGE 2SAMPLES
 //const file_bootstrap_class = 'list-group-item d-flex justify-content-between align-items-center';
-const file_bootstrap_class = 'list-group-item list-group-item-action';
-
+const file_bootstrap_class = 'list-group-item list-group-item-action border';
+//const check_div = '<button type="button" class="deluge-item-checked btn btn-outline-primary btn-sm"><i class="fa fa-check"></i></button>'
 //const id_regexp = new RegExp(path.sep,'g');
 
 function renderFile(name, fpath, renderMode, isDirectory) {
@@ -424,6 +422,7 @@ function renderFile(name, fpath, renderMode, isDirectory) {
     }
 }
 
+/*
 function toggleMulti() {
     $('.deluge-sample').checkable();
 }
@@ -448,10 +447,21 @@ $.fn.extend({
       });
     }
   });
+*/
+
+function deleteFromFolderView(spath) {
+    const item = $(`div[data-path="${spath}"`);
+    console.log(item);
+    item.remove();
+}
 
 function readFolder(cpath = samplesRootPath, renderMode = 'list') {
 //    mover.sync_from_card();
     setCurrentPath(cpath);
+    const waveform_show = settings.get('waveform_show');
+
+    // [FB] cache preference massively called during rendering
+//    console.log(`Waveform display: ${waveform_show}`);
 
     fs.readdir(cpath, (err, files) => {
         'use strict';
@@ -519,7 +529,7 @@ function readFolder(cpath = samplesRootPath, renderMode = 'list') {
                         });
                         */
 
-                        if(!disable_waveforms || disable_waveforms===false){
+                        if(waveform_show){
 
                             fetch(fileUrl(fpath))
                             .then(response => response.arrayBuffer())
