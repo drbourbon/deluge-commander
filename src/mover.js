@@ -264,18 +264,32 @@ exports.samplesReferencesInFile = function(file_path) {
     const regex = /<fileName>(.+?)<\/fileName>|filePath="(.+?)"|fileName="(.+?)"/g;
     let wavs = matchAll(data,regex).toArray();
 //    let wavs = data.match(/<fileName>(.+)<\/fileName>/g);
-//    console.log(wavs);
+/*
+    console.log(file_path);
+    console.log(wavs);
+    */
     return wavs;
 }
 
-exports.saveArtefact = function(file_path, wavs, to_path) {
-    const relative_file_name = slash(path.relative(cardRootPath(), file_path));
+exports.saveArtefacts = function(file_paths, wavs, to_path) {
+    if (!file_paths) throw new Error('Empty artefact list')
+
+//    const file_path = file_paths[0];
     var zip = new JSZip();
-    zip.file(relative_file_name, fs.readFileSync(file_path));
+    file_paths.forEach(a => {
+        const relative_file_name = slash(path.relative(cardRootPath(), a));
+        zip.file(relative_file_name, fs.readFileSync(a));
+    })
+
+    console.log(file_paths);
+
     wavs.forEach(w => {
         const wpath = path.join(cardRootPath(),w);
         zip.file(w, fs.readFileSync(wpath));
     })
+
+    console.log(wavs);
+
     zip.generateNodeStream({type:'nodebuffer',streamFiles:true}).pipe(fs.createWriteStream(to_path))
     .on('finish', function () {
         console.log(to_path + " written.");

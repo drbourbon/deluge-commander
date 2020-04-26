@@ -59,19 +59,29 @@ function exportArtefact() {
             filters: [
                 { name: 'Deluge files', extensions: ['xml', 'XML'] }
             ],
-            properties: ['openFile']
+            properties: ['openFile', 'multiSelections']
         });
     if(!patch_paths) return;
 
+    let sample_refs = [];
+    let relative_patch_path = path.relative(cardRootPath(), patch_paths[0]);
+    patch_paths.forEach(a => {
+        let refs = mover.samplesReferencesInFile(a);
+        refs.forEach(w => { sample_refs.push(w) })
+    })
+    /*
     let patch_path = patch_paths[0];
     let relative_patch_path = path.relative(cardRootPath(), patch_path);
     let sample_refs = mover.samplesReferencesInFile(patch_path);
+    */
 
+    let alist = patch_paths.map(a => { return path.relative(cardRootPath(),a)});
+    let message = `Sharing ${alist.join(', ')}. Proceed?`
     let detail_message = sample_refs.length>0 ? `includes: ${sample_refs.join(', ')}.` : '';
-
+//    detail_message += alist.join(', ');
     let confirmation = dialog.showMessageBox({
         type: 'question',
-        message: `Sharing ${relative_patch_path}. Proceed?`,
+        message: message,
         detail: detail_message,
         buttons: ['Cancel','OK']
     });
@@ -87,7 +97,7 @@ function exportArtefact() {
         })
         if(!artefact_save_path) return;
         try {
-            mover.saveArtefact(patch_path, sample_refs, artefact_save_path);
+            mover.saveArtefacts(patch_paths, sample_refs, artefact_save_path);
             mover.setSavePath(path.dirname(artefact_save_path));
             dialog.showMessageBox({
                 type: 'info',
