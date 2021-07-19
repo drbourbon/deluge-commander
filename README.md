@@ -4,6 +4,10 @@ Utility to organize Synthstrom Deluge sample library, by moving and renaming sam
 
 ## Getting Started
 
+### Usage
+
+See brief instructions here: https://neuma.studio/deluge-commander.html
+
 ### Dependencies
 
 * a decent operating system with working shell environment
