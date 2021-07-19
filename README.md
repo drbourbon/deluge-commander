@@ -6,33 +6,34 @@ Utility to organize Synthstrom Deluge sample library, by moving and renaming sam
 
 ### Dependencies
 
-* Describe any prerequisites, libraries, OS version, etc., needed before installing program.
-* ex. Windows 10
+* a decent operating system with working shell environment
+* nodejs
 
-### Installing
+### Building from source code
 
-* How/where to download your program
-* Any modifications needed to be made to files/folders
+```
+git clone https://github.com/drbourbon/deluge-commander
+cd deluge-commander
+npm install
+npm run make
+```
 
 ### Executing program
 
-* How to run the program
-* Step-by-step bullets
+From command-line:
 ```
-code blocks for commands
+cd deluge-commander
+npm run start
 ```
 
-## Help
-
-Any advise for common problems or issues.
-```
-command to run if program contains helper info
-```
+Otherwise just launch it as any other standard desktop software.
 
 ## Authors
 
 Contributors names and contact info
 
-ex. Fabio Barbon
-ex. [neuma.studio](https://neuma.studio)
+Fabio Barbon - [neuma.studio](https://neuma.studio)
 
+## License
+
+This project is licensed under the GNU GENERAL PUBLIC LICENSE v3 - see the LICENSE.md file for details
