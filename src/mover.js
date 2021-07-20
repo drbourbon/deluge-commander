@@ -54,6 +54,10 @@ const mem_load_path = function(what) {
 
 }
 
+const is_sample = function(file_path) {
+    return path.extname(file_path).toUpperCase().endsWith('WAV')
+}
+
 const load_card = function(reset) {
     if(reset==false && mover.getSyncOps()==true) reset = true;
 
@@ -199,7 +203,7 @@ exports.move_folder = function(source, dest, usages, is_renaming = false) {
 }
 
 exports.move = function(source, dest_path, usages) {
-    const is_renaming = path.extname(dest_path).toUpperCase().endsWith('WAV');
+    const is_renaming = is_sample(dest_path);// path.extname(dest_path).toUpperCase().endsWith('WAV');
 
     const source_relative = path.relative(cardRootPath(), source);
     const source_filename = path.basename(source);
@@ -326,7 +330,7 @@ const escapeRegExp = (string) => {
 }
 
 const sample_occurs_in_file = async function(sample_file_name, file_path) {
-    const is_file = path.extname(sample_file_name).toUpperCase().endsWith('WAV');
+    const is_file = is_sample(sample_file_name);// path.extname(sample_file_name).toUpperCase().endsWith('WAV');
     const data = await readfileP(file_path, 'utf8');
     const safe_file_name = is_file ? sample_file_name : sample_file_name + '/';
     // [TODO] temp fix for case sensitivity issue
@@ -339,7 +343,7 @@ const sample_occurs_in_file = async function(sample_file_name, file_path) {
 }
 
 const sample_occurs_in_file_sync =  function(sample_file_name, file_path) {
-    const is_file = path.extname(sample_file_name).toUpperCase().endsWith('WAV');
+    const is_file = is_sample(sample_file_name);// path.extname(sample_file_name).toUpperCase().endsWith('WAV');
     const data = fs.readFileSync(file_path, 'utf8');
     const safe_file_name = is_file ? sample_file_name : sample_file_name + '/';
 
