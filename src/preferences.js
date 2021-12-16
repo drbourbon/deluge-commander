@@ -51,11 +51,11 @@ const preferences = new ElectronPreferences({
                   'options':[
                     {
                         'label':'Show sample waveforms (slower)','value':'waveform_show'
-                    }/*,
+                    },
                     {
                         'label':'Rescan card after operations (slower but safer)',
                         'value':'sync_operations'
-                    }*/
+                    }
                   ]
                 }
               ]

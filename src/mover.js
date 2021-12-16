@@ -35,17 +35,31 @@ exports.getSyncOps = function() {
 let vol = Volume.fromJSON({'/SONGS':0, '/KITS':0, '/SYNTHS':0 });
 let mfs = createFsFromVolume(vol);
 
+const _getAllFiles = (what,dir) =>
+  fs.readdirSync(dir).reduce((files, file) => {
+    const name = path.join(dir, file);
+    const to_add = what==dir ? file : path.join(path.relative(what,dir),file)
+    //console.log(`(${what}) ${dir} => ${file} (${to_add})`);
+    const isDirectory = fs.statSync(name).isDirectory();
+    return isDirectory ? [...files, ..._getAllFiles(what,name)] : [...files, to_add];
+  }, []);
+
+const getAllFiles = (dir) => _getAllFiles(dir,dir);
+
 const mem_load_path = function(what) {
     let songs_path = path.join(cardRootPath(), what);
     let songs_vpath = path.join('/', what);
 
-    let songs = fs.readdirSync(songs_path);
+    let songs = getAllFiles(songs_path);
     songs.forEach(file => {
         let file_path = path.join(songs_path, file);
         let dest_path = path.join(songs_vpath, file);
         try {
             let content = fs.readFileSync(file_path);
-            vol.writeFileSync(dest_path,content);
+            vol.mkdir(path.dirname(dest_path), { recursive: true}, function (err) {
+                if(err) throw 'Cannot create folder';
+                vol.writeFileSync(dest_path,content);
+            })
             //console.log(`copied ${file_path} to ${dest_path}`);
     } catch (error) {
             throw error;
@@ -79,11 +93,6 @@ const load_card = function(reset) {
     mem_load_path('KITS');
     mem_load_path('SYNTHS');
 
-    /*
-    readdirP(path.join('/', 'SONGS'), (err, files)=>{
-        console.log(files);
-    });
-    */
    console.log('card cache sync completed!');
 }
 exports.sync_from_card = load_card;
@@ -318,7 +327,25 @@ exports.usages = usages;
 // ------ ASYNC VERSIONS
 
 const readfileP = util.promisify(mfs.readFile);
-const readdirP = util.promisify(mfs.readdir);
+
+//const readdirP = util.promisify(mfs.readdir);
+
+const mreaddirP = util.promisify(mfs.readdir);
+const statP = util.promisify(mfs.stat);
+
+async function readdirP(dir, fileList = []) {
+  const files = await mreaddirP(dir)
+  for (const file of files) {
+    const stat = await statP(path.join(dir, file))
+    if (stat.isDirectory()) fileList = await readdirP(path.join(dir, file), fileList)
+    else {
+        let fixed_path = path.join(dir,file).split(path.sep).slice(2).join(path.sep)
+        //console.log(`(${dir}) ${file} (${fixed_path})`)
+        fileList.push(fixed_path)
+    }
+  }
+  return fileList
+}
 
 /*
 const readfileP = util.promisify(fs.readFile);
@@ -357,9 +384,9 @@ const sample_occurs_in_file_sync =  function(sample_file_name, file_path) {
 
 // [FB] syncronous functions used to double check actual files before doing potentially destructive operations
 const scan_dir = function(sample_file_name, scan_path) {
-    console.log('Finding usages for ' + sample_file_name + ' in ' + scan_path);
+    //console.log('Finding usages for ' + sample_file_name + ' in ' + scan_path);
     let found = [];
-    let files = fs.readdirSync(scan_path);
+    let files = getAllFiles(scan_path);
     files.forEach(file => {
         let file_path = path.join(scan_path, file);
         if(path.extname(file_path).toUpperCase()!=='.XML') return;
@@ -378,10 +405,11 @@ const scan_dir_async = async function(sample_file_name, scan_path) {
 //        console.log('Finding usages for ' + sample_file_name + ' in ' + scan_path);
     let found = [];
     const files = await readdirP(scan_path);
+
     for (let file of files) {
         let file_path = path.join(scan_path, file);
         if(path.extname(file_path).toUpperCase()!=='.XML') continue;
-//        console.log('Testing ' + file_path + ' for referring ' + sample_file_name + ' ..');
+        //console.log('Testing ' + file_path + ' for referring ' + sample_file_name + ' ..');
         const occurs = await sample_occurs_in_file(sample_file_name, file_path);
         if(occurs) {
             let relative_name = path.relative('/', file_path);
