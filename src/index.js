@@ -191,6 +191,7 @@ const createWindow = () => {
         webSecurity: true,
         allowRunningInsecureContent: false,
         webaudio:true,
+        nodeIntegration:true,
       }
     });
 
